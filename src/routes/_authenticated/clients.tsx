@@ -50,15 +50,19 @@ import { INDUSTRY_OPTIONS, formatDate, initials } from "@/lib/crm";
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({
     meta: [
-      { title: "Clients — Zenith CRM" },
+      { title: "Client Directory & Customer Accounts — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Manage converted customer accounts with contacts, account managers, billing details and status.",
+          "Manage active customer accounts, key contacts, account manager assignments, billing information, and status tiers.",
       },
-      { property: "og:title", content: "Clients — Zenith CRM" },
-      { property: "og:description", content: "Your customer accounts in one place." },
+      { property: "og:title", content: "Client Directory & Customer Accounts — LeadKart CRM" },
+      { property: "og:description", content: "Manage your client database and contact relationships." },
+      { property: "og:url", content: "https://leadkart.lovable.app/clients" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Client Accounts — LeadKart CRM" },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/clients" }],
   }),
   component: ClientsPage,
 });

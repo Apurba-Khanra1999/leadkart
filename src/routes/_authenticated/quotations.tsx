@@ -36,15 +36,19 @@ import { formatDate, formatMoney } from "@/lib/crm";
 export const Route = createFileRoute("/_authenticated/quotations")({
   head: () => ({
     meta: [
-      { title: "Quotations — Zenith CRM" },
+      { title: "B2B Quotations Generator & Proposals — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Build itemised quotations with tax, track acceptance and convert accepted quotes into invoices.",
+          "Build itemised quotations and sales proposals with taxes, discounts, acceptance tracking, and one-click conversion into invoices.",
       },
-      { property: "og:title", content: "Quotations — Zenith CRM" },
-      { property: "og:description", content: "Itemised quotes that convert into invoices." },
+      { property: "og:title", content: "B2B Quotations Generator & Proposals — LeadKart CRM" },
+      { property: "og:description", content: "Itemised quotes that convert seamlessly into invoices." },
+      { property: "og:url", content: "https://leadkart.lovable.app/quotations" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Quotation Generator — LeadKart CRM" },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/quotations" }],
   }),
   component: QuotationsPage,
 });

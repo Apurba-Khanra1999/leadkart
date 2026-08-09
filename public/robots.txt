@@ -1,8 +1,17 @@
+# Robots.txt for LeadKart CRM / Zenith CRM
+# Allows search engine crawlers and AI agents to index public marketing pages & metadata.
+
 User-agent: Googlebot
 Allow: /
+Allow: /auth
+Allow: /sitemap.xml
+Allow: /llms.txt
+Allow: /llms-full.txt
+Disallow: /api/
 
 User-agent: Bingbot
 Allow: /
+Disallow: /api/
 
 User-agent: Twitterbot
 Allow: /
@@ -10,5 +19,27 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
+User-agent: GPTBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: ClaudeBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: PerplexityBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: Applebot
+Allow: /
+
 User-agent: *
 Allow: /
+Disallow: /api/
+
+# Sitemap Location
+Sitemap: https://leadkart.lovable.app/sitemap.xml

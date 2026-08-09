@@ -40,15 +40,19 @@ import { formatDate, formatMoney, initials } from "@/lib/crm";
 export const Route = createFileRoute("/_authenticated/pipeline")({
   head: () => ({
     meta: [
-      { title: "Pipeline — Zenith CRM" },
+      { title: "Kanban Deal Pipeline & Revenue Forecast — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Track every open deal by stage with weighted forecast values, owners and expected close dates.",
+          "Track open sales deals by Kanban stage with weighted forecast values, assigned team members, win probabilities, and close date tracking.",
       },
-      { property: "og:title", content: "Pipeline — Zenith CRM" },
-      { property: "og:description", content: "Stage-by-stage weighted sales forecast." },
+      { property: "og:title", content: "Kanban Deal Pipeline & Revenue Forecast — LeadKart CRM" },
+      { property: "og:description", content: "Stage-by-stage weighted sales pipeline and deal forecasting." },
+      { property: "og:url", content: "https://leadkart.lovable.app/pipeline" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Deal Pipeline & Forecasting — LeadKart CRM" },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/pipeline" }],
   }),
   component: PipelinePage,
 });

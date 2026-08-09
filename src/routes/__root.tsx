@@ -78,38 +78,60 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "LeadKart CRM — Multi-tenant sales CRM for growing teams" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, shrink-to-fit=no" },
+      { title: "LeadKart CRM — Enterprise Multi-Tenant Sales CRM & Pipeline Platform" },
       {
         name: "description",
         content:
-          "Manage leads, pipeline, follow-ups, quotations and invoices in one workspace. Strict tenant isolation and role-based permissions built in.",
+          "LeadKart CRM is a multi-tenant sales management platform. Qualify leads, automate follow-ups, forecast deal pipelines, generate quotations, and manage invoices with database-enforced security.",
       },
+      {
+        name: "keywords",
+        content:
+          "sales crm, lead management, sales pipeline, multi-tenant crm, deal tracking, quotation builder, invoicing software, B2B sales automation, Zenith CRM, LeadKart",
+      },
+      { name: "author", content: "LeadKart CRM Team" },
+      { name: "robots", content: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" },
+      { name: "theme-color", content: "#0f172a" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "LeadKart CRM" },
+
+      /* Open Graph */
+      { property: "og:site_name", content: "LeadKart CRM" },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://leadkart.lovable.app/" },
       { property: "og:title", content: "LeadKart CRM — Multi-tenant sales CRM for growing teams" },
       {
         property: "og:description",
-        content: "Manage leads, pipeline, follow-ups, quotations and invoices in one workspace. Strict tenant isolation and role-based permissions built in.",
+        content:
+          "Manage leads, pipeline, follow-ups, quotations and invoices in one workspace. Strict tenant isolation and role-based permissions built in.",
       },
-      { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/aaff1b2b9238acc4d535cc191c729e0a/id-preview-30a4b55d--2126f7d6-ffea-4536-ab9d-17006d9aa17f.lovable.app-1786166547462.png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+
+      /* Twitter Cards */
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "LeadKart CRM — Multi-tenant sales CRM for growing teams" },
-      { name: "twitter:description", content: "Manage leads, pipeline, follow-ups, quotations and invoices in one workspace. Strict tenant isolation and role-based permissions built in." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/aaff1b2b9238acc4d535cc191c729e0a/id-preview-30a4b55d--2126f7d6-ffea-4536-ab9d-17006d9aa17f.lovable.app-1786166547462.png" },
+      { name: "twitter:creator", content: "@Lovable" },
+      { name: "twitter:title", content: "LeadKart CRM — Enterprise Sales CRM & Automation" },
+      { name: "twitter:description", content: "Manage leads, pipeline, follow-ups, quotations and invoices with strict database tenant isolation." },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/aaff1b2b9238acc4d535cc191c729e0a/id-preview-30a4b55d--2126f7d6-ffea-4536-ab9d-17006d9aa17f.lovable.app-1786166547462.png" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "alternate icon", type: "image/x-icon", href: "/favicon.ico" },
+      { rel: "apple-touch-icon", href: "/favicon.svg" },
+      { rel: "manifest", href: "/site.webmanifest" },
+      { rel: "canonical", href: "https://leadkart.lovable.app/" },
     ],
   }),
   shellComponent: RootShell,
@@ -118,11 +140,42 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+const jsonLdSchema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "LeadKart CRM",
+      "alternateName": "Zenith CRM",
+      "operatingSystem": "All",
+      "applicationCategory": "BusinessApplication",
+      "description": "Multi-tenant B2B sales CRM, lead management, sales pipeline, quotation builder, and invoicing software.",
+      "url": "https://leadkart.lovable.app/",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    },
+    {
+      "@type": "Organization",
+      "name": "LeadKart CRM",
+      "url": "https://leadkart.lovable.app/",
+      "logo": "https://leadkart.lovable.app/favicon.svg",
+      "sameAs": ["https://twitter.com/Lovable"]
+    }
+  ]
+};
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdSchema) }}
+        />
       </head>
       <body>
         {children}

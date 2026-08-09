@@ -14,19 +14,26 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "LeadKart CRM — Multi-tenant sales CRM for growing teams" },
+      { title: "LeadKart CRM — Multi-Tenant B2B Sales Platform & Pipeline Management" },
       {
         name: "description",
         content:
-          "Manage leads, pipeline, follow-ups, quotations and invoices in one workspace. Strict tenant isolation and role-based permissions built in.",
+          "LeadKart CRM helps growing sales teams manage leads, automate follow-ups, forecast deal pipelines, build quotations, and track invoices in one workspace.",
       },
-      { property: "og:title", content: "LeadKart CRM — Multi-tenant sales CRM for growing teams" },
+      { name: "keywords", content: "b2b sales crm, lead flow pro, leadkart, deal pipeline, sales automation, quotation generator, invoice tracking" },
+      { property: "og:title", content: "LeadKart CRM — Multi-Tenant B2B Sales Platform & Pipeline Management" },
       {
         property: "og:description",
         content:
-          "Manage leads, pipeline, follow-ups, quotations and invoices in one workspace. Strict tenant isolation and role-based permissions built in.",
+          "Run your entire sales motion in one disciplined workspace with database-level security and role-based permissions.",
       },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://leadkart.lovable.app/" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "LeadKart CRM — Multi-Tenant B2B Sales Platform" },
+      { name: "twitter:description", content: "Qualify leads, automate follow-ups, forecast deal pipelines, generate quotations, and manage invoices." },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/" }],
   }),
   component: Index,
 });

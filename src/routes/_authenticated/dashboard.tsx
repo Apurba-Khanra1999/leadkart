@@ -19,15 +19,19 @@ import { formatMoney, formatDateTime, relativeDay } from "@/lib/crm";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Zenith CRM" },
+      { title: "Sales Dashboard & Live KPIs — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Live sales KPIs: open leads, weighted pipeline, follow-ups due today and outstanding invoice value.",
+          "Real-time sales dashboard: monitor open leads, weighted pipeline forecasts, follow-ups due today, and outstanding invoice balances.",
       },
-      { property: "og:title", content: "Dashboard — Zenith CRM" },
-      { property: "og:description", content: "Live sales KPIs for your organisation." },
+      { property: "og:title", content: "Sales Dashboard & Live KPIs — LeadKart CRM" },
+      { property: "og:description", content: "Live sales KPIs, weighted pipeline, and activity feeds for your organisation." },
+      { property: "og:url", content: "https://leadkart.lovable.app/dashboard" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Sales Dashboard — LeadKart CRM" },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/dashboard" }],
   }),
   component: DashboardPage,
 });

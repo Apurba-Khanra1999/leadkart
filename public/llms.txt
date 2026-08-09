@@ -1,0 +1,29 @@
+# LeadKart CRM — Multi-Tenant B2B Sales Platform
+
+> LeadKart CRM (Zenith CRM) is an enterprise-grade multi-tenant B2B Sales CRM and pipeline automation suite designed for growing sales teams, agencies, and revenue operations.
+
+## Key Capabilities
+- **Lead Capture & Management**: Qualify, score, tag, and assign incoming leads across custom stages and sources.
+- **Visual Sales Pipeline**: Real-time Kanban board with database-calculated weighted deal values and probability forecasts.
+- **Follow-Up Automation**: Task management for sales calls, emails, demos, and meetings with overdue alerts and automated activity feeds.
+- **Quotations & Invoicing**: Integrated quotation builder, itemized line items, automatic tax/discount formulas, conversion to invoices, and balance tracking.
+- **Product Catalog Management**: Products and service inventory with SKUs, category tags, and line-item linking.
+- **Multi-Tenant Security & RBAC**: Strict Row Level Security (RLS) in PostgreSQL isolating tenant data across organizations, with granular roles (Owner, Admin, Sales Manager, Executive).
+
+## Primary Routes & Applications
+- [Landing Page](https://leadkart.lovable.app/): Product summary and workspace access.
+- [Authentication & Demo](https://leadkart.lovable.app/auth): Secure login, team signup, and instant seeded sandbox workspace access.
+- [Sales Dashboard](https://leadkart.lovable.app/dashboard): Live revenue metrics, open leads, weighted pipeline, and activities timeline.
+- [Leads Directory](https://leadkart.lovable.app/leads): Interactive lead management with drawer activity feeds.
+- [Kanban Pipeline](https://leadkart.lovable.app/pipeline): Drag-and-drop opportunity pipeline management.
+- [Task & Follow-Ups](https://leadkart.lovable.app/follow-ups): Sales tasks and schedule calendar.
+- [Quotations Generator](https://leadkart.lovable.app/quotations): B2B quotation builder.
+- [Invoices & Payments](https://leadkart.lovable.app/invoices): Billing tracking and payment reconciliation.
+
+## Technical Architecture
+- **Frontend**: TanStack Start, TanStack Router, React 19, Tailwind CSS v4, Radix UI primitives.
+- **Backend & Database**: Supabase PostgreSQL with strict RLS policies and server-side RPC functions.
+- **State & Data Sync**: TanStack Query v5 with optimistic UI updates and real-time invalidation.
+
+## Optional Documentation
+- [Full LLM Specification](https://leadkart.lovable.app/llms-full.txt): Comprehensive API models, DB schemas, and workspace configuration guide.

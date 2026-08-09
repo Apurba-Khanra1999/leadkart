@@ -35,15 +35,19 @@ import { ROLE_LABELS, formatDate, initials } from "@/lib/crm";
 export const Route = createFileRoute("/_authenticated/team")({
   head: () => ({
     meta: [
-      { title: "Team & roles — Zenith CRM" },
+      { title: "Team Management & RBAC Permissions — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Invite colleagues, assign Owner, Admin, Sales Manager, Sales Executive or Accountant roles and see exactly what each role can do.",
+          "Invite sales reps and administrators, assign Owner, Admin, Sales Manager, Executive, or Accountant roles with database-enforced permissions.",
       },
-      { property: "og:title", content: "Team & roles — Zenith CRM" },
+      { property: "og:title", content: "Team Management & RBAC Permissions — LeadKart CRM" },
       { property: "og:description", content: "Role-based access control for your sales team." },
+      { property: "og:url", content: "https://leadkart.lovable.app/team" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Team & Roles — LeadKart CRM" },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/team" }],
   }),
   component: TeamPage,
 });

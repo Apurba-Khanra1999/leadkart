@@ -67,20 +67,23 @@ import { formatMoney, formatMoneyFull } from "@/lib/crm";
 export const Route = createFileRoute("/_authenticated/products")({
   head: () => ({
     meta: [
-      { title: "Services & Products — Zenith CRM" },
+      { title: "Products & Services Catalog — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Organise your sales catalogue into collections of services and products with pricing, units, tax rates and active status.",
+          "Organise your sales catalogue into service collections and product inventory with unit prices, SKU tags, tax rates, and deal line-item attachments.",
       },
-      { property: "og:title", content: "Services & Products — Zenith CRM" },
+      { property: "og:title", content: "Products & Services Catalog — LeadKart CRM" },
       {
         property: "og:description",
         content: "Collections and price list of every service and product your team sells.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://leadkart.lovable.app/products" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Product Inventory — LeadKart CRM" },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/products" }],
   }),
   component: ProductsPage,
 });

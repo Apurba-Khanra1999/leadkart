@@ -16,18 +16,23 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Sign in — Zenith CRM" },
+      { title: "Sign In & Access Demo — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Sign in to Zenith CRM to manage leads, pipeline, follow-ups, quotations and invoices for your sales team.",
+          "Sign in to LeadKart CRM or launch an instant demo sandbox. Manage leads, pipeline, follow-ups, quotations and invoices with enterprise security.",
       },
-      { property: "og:title", content: "Sign in — Zenith CRM" },
+      { property: "og:title", content: "Sign In & Access Demo — LeadKart CRM" },
       {
         property: "og:description",
         content: "Access your multi-tenant sales workspace: leads, pipeline, follow-ups and billing.",
       },
+      { property: "og:url", content: "https://leadkart.lovable.app/auth" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Sign In — LeadKart CRM" },
+      { name: "twitter:description", content: "Access your multi-tenant sales CRM workspace." },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/auth" }],
   }),
   component: AuthPage,
 });

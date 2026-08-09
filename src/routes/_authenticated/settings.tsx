@@ -18,15 +18,19 @@ import { can, useWorkspace } from "@/hooks/use-workspace";
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
     meta: [
-      { title: "Workspace settings — Zenith CRM" },
+      { title: "Workspace & Organization Settings — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Company profile, currency, numbering prefixes, tax defaults and the lead sources, statuses and pipeline stages your team works with.",
+          "Configure company profile, currency symbol, default tax rates, payment terms, and custom lead sources and deal pipeline stages.",
       },
-      { property: "og:title", content: "Workspace settings — Zenith CRM" },
-      { property: "og:description", content: "Tune your CRM to how your business actually sells." },
+      { property: "og:title", content: "Workspace & Organization Settings — LeadKart CRM" },
+      { property: "og:description", content: "Configure LeadKart CRM to match your sales workflow." },
+      { property: "og:url", content: "https://leadkart.lovable.app/settings" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Organization Settings — LeadKart CRM" },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/settings" }],
   }),
   component: SettingsPage,
 });

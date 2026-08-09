@@ -1,0 +1,70 @@
+# LeadKart CRM — Full Architecture & LLM Context Specification
+
+## Overview
+LeadKart CRM is a multi-tenant B2B Sales & Revenue Operations platform. It enables sales organizations to streamline lead acquisition, deal pipeline management, client communications, product line pricing, quote generation, and invoice collection within an enterprise security perimeter.
+
+---
+
+## 1. Multi-Tenant Architecture & Security Model
+
+### Tenant Isolation
+Every query executed in the database is scoped to an `organization_id`. Supabase Row-Level Security (RLS) policies evaluate `auth.uid()` against active memberships in `public.organization_members`.
+
+### Role-Based Access Control (RBAC)
+- **Owner**: Full administrative control over organization, billing, team memberships, and master data.
+- **Admin**: Workspace configuration, user permission assignment, data import/export, and team overview.
+- **Sales Manager**: Pipeline management, team assignment, deal approval, quotation generation.
+- **Sales Executive**: Personal lead ownership, task creation, follow-up logging, deal updating.
+- **Accountant / Guest**: Read/write access restricted to Quotations, Invoices, Payments, and Financial Reports.
+
+---
+
+## 2. Core Modules & Data Entities
+
+### 2.1 Lead Management (`public.leads`)
+- Fields: `id`, `organization_id`, `first_name`, `last_name`, `email`, `phone`, `company`, `title`, `estimated_value`, `status_id`, `source_id`, `assigned_to`, `notes`, `tags`.
+- Logic: Automatic lead qualification scoring, status transitions (New, Contacted, Qualified, Disqualified, Converted), and activity logging.
+
+### 2.2 Deals & Visual Pipeline (`public.deals`, `public.deal_stages`)
+- Fields: `id`, `organization_id`, `lead_id`, `client_id`, `title`, `value`, `stage_id`, `probability`, `weighted_value`, `status`, `expected_close_date`.
+- Logic: `weighted_value = value * (probability / 100)`. Stages are customizable per organization.
+
+### 2.3 Follow-ups & Activity Logs (`public.follow_ups`, `public.activities`)
+- Follow-up Types: `call`, `email`, `meeting`, `demo`, `task`.
+- Priorities: `low`, `medium`, `high`, `urgent`.
+- Logic: System triggers automated `activities` entries upon follow-up completion, status changes, or document delivery.
+
+### 2.4 Product & Services Catalog (`public.products`, `public.record_products`)
+- Fields: `id`, `organization_id`, `name`, `sku`, `category`, `unit_price`, `currency`, `description`, `is_active`.
+- Attachment: Products can be linked to leads, deals, quotations, and invoices with quantity and custom unit prices.
+
+### 2.5 Quotations & Invoicing (`public.quotations`, `public.invoices`)
+- Quotation Statuses: `draft`, `sent`, `accepted`, `rejected`, `expired`, `converted`.
+- Invoice Statuses: `draft`, `unpaid`, `partially_paid`, `paid`, `overdue`, `cancelled`.
+- Financial Calculations: Subtotal, Line-item Discounts, Tax %, Grand Total, Outstanding Amount.
+
+---
+
+## 3. Technology Stack & Developer Guidelines
+
+- **Frontend**: TanStack Start, TanStack Router (`@tanstack/react-router`), React 19, Lucide Icons, Recharts, Sonner.
+- **Styling**: Tailwind CSS v4, CSS Variables, Radix UI Primitives.
+- **State Management**: TanStack Query v5 with optimistic UI updates.
+- **Database Connection**: `@supabase/supabase-js` client connected to PostgreSQL instance with RLS enabled.
+
+---
+
+## 4. API Endpoints & Routes Summary
+
+- `/` -> Landing page & value proposition.
+- `/auth` -> Login, registration, password recovery, demo seed loader.
+- `/_authenticated/dashboard` -> KPI metrics dashboard & recent activity feed.
+- `/_authenticated/leads` -> Lead database with drawer details.
+- `/_authenticated/pipeline` -> Kanban board for open deal opportunities.
+- `/_authenticated/follow-ups` -> Scheduled sales task management.
+- `/_authenticated/clients` -> Client directory and account histories.
+- `/_authenticated/products` -> Product catalog inventory.
+- `/_authenticated/quotations` -> B2B Quotation generator & PDF export.
+- `/_authenticated/invoices` -> Invoicing and payment reconciliation.
+- `/_authenticated/team` -> Team management & RBAC configuration.
+- `/_authenticated/settings` -> Organization preferences, lead sources, deal stages.

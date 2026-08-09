@@ -36,18 +36,22 @@ import { formatDate, formatMoney, formatMoneyFull } from "@/lib/crm";
 export const Route = createFileRoute("/_authenticated/invoices")({
   head: () => ({
     meta: [
-      { title: "Invoices & payments — Zenith CRM" },
+      { title: "Invoicing & Payment Reconciliation — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Raise invoices, record part payments and watch outstanding balances and overdue accounts update automatically.",
+          "Raise professional invoices, record full or partial payments, track overdue accounts, and manage client outstanding balances.",
       },
-      { property: "og:title", content: "Invoices & payments — Zenith CRM" },
+      { property: "og:title", content: "Invoicing & Payment Reconciliation — LeadKart CRM" },
       {
         property: "og:description",
-        content: "Invoice balances and overdue status update themselves as payments land.",
+        content: "Invoice balances and overdue status update automatically as payments land.",
       },
+      { property: "og:url", content: "https://leadkart.lovable.app/invoices" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Invoicing & Payments — LeadKart CRM" },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/invoices" }],
   }),
   component: InvoicesPage,
 });

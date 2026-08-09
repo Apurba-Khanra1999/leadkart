@@ -76,18 +76,22 @@ import { ProductPicker } from "@/components/crm/product-picker";
 export const Route = createFileRoute("/_authenticated/leads")({
   head: () => ({
     meta: [
-      { title: "Leads — Zenith CRM" },
+      { title: "Lead Management & CRM Directory — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Capture, filter, qualify and convert sales leads with status, source, priority, owner and follow-up tracking.",
+          "Capture, filter, qualify, and convert sales leads. Track status, lead source, priority, assigned owner, and activity history.",
       },
-      { property: "og:title", content: "Leads — Zenith CRM" },
+      { property: "og:title", content: "Lead Management & CRM Directory — LeadKart CRM" },
       {
         property: "og:description",
-        content: "Filter, qualify, convert and follow up on every sales lead.",
+        content: "Filter, qualify, convert and follow up on every sales lead in your organization.",
       },
+      { property: "og:url", content: "https://leadkart.lovable.app/leads" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Lead Management — LeadKart CRM" },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/leads" }],
   }),
   component: LeadsPage,
 });

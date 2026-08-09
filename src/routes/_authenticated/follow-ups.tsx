@@ -51,15 +51,19 @@ import { ProductPicker } from "@/components/crm/product-picker";
 export const Route = createFileRoute("/_authenticated/follow-ups")({
   head: () => ({
     meta: [
-      { title: "Follow-ups — Zenith CRM" },
+      { title: "Sales Tasks & Follow-Up Automation — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Every call, meeting and payment reminder due today, overdue or coming up, with owners and outcomes.",
+          "Schedule, track, and complete sales follow-ups: calls, meetings, demos, WhatsApp messages, and payment reminders.",
       },
-      { property: "og:title", content: "Follow-ups — Zenith CRM" },
-      { property: "og:description", content: "Never miss a sales follow-up again." },
+      { property: "og:title", content: "Sales Tasks & Follow-Up Automation — LeadKart CRM" },
+      { property: "og:description", content: "Never miss a customer touchpoint or sales task." },
+      { property: "og:url", content: "https://leadkart.lovable.app/follow-ups" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Sales Follow-Ups & Reminders — LeadKart CRM" },
     ],
+    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/follow-ups" }],
   }),
   component: FollowUpsPage,
 });
