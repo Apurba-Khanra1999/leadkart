@@ -76,3 +76,27 @@ export const INDUSTRY_OPTIONS = [
   "Professional Services",
   "Other",
 ].map((name) => ({ id: name, name }));
+
+export function getMeetLink(
+  item: { meeting_link?: string | null; notes?: string | null; subject?: string | null } | null | undefined,
+): string | null {
+  if (!item) return null;
+  if (item.meeting_link?.trim()) return item.meeting_link.trim();
+  const text = `${item.notes ?? ""} ${item.subject ?? ""}`;
+  const match = text.match(/(https?:\/\/[^\s>]*(?:meet\.google\.com|zoom\.us|teams\.microsoft)[^\s>]*)/i);
+  if (match && match[1]) return match[1];
+  const genericMatch = text.match(/(https?:\/\/[^\s>]+)/i);
+  if (genericMatch && genericMatch[1]) return genericMatch[1];
+  return null;
+}
+
+export function formatNotesWithMeetLink(
+  notes: string | null | undefined,
+  meetLink: string | null | undefined,
+): string | null {
+  const cleanNotes = (notes ?? "").trim();
+  const cleanLink = (meetLink ?? "").trim();
+  if (!cleanLink) return cleanNotes || null;
+  if (cleanNotes.includes(cleanLink)) return cleanNotes;
+  return cleanNotes ? `${cleanNotes}\n\nGoogle Meet: ${cleanLink}` : `Google Meet: ${cleanLink}`;
+}

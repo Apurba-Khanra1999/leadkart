@@ -40,6 +40,12 @@
     <priority>0.80</priority>
   </url>
   <url>
+    <loc>https://leadkart.lovable.app/demos</loc>
+    <lastmod>2026-08-09</lastmod>
+    <changefreq>always</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
     <loc>https://leadkart.lovable.app/clients</loc>
     <lastmod>2026-08-09</lastmod>
     <changefreq>daily</changefreq>

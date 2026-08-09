@@ -4,6 +4,7 @@ import {
   Users,
   KanbanSquare,
   CalendarClock,
+  Video,
   FileText,
   Receipt,
   Building2,
@@ -33,6 +34,7 @@ const salesItems = [
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Pipeline", url: "/pipeline", icon: KanbanSquare },
   { title: "Follow-ups", url: "/follow-ups", icon: CalendarClock },
+  { title: "Demos", url: "/demos", icon: Video },
   { title: "Clients", url: "/clients", icon: Building2 },
 ] as const;
 

@@ -172,3 +172,42 @@
 @utility bg-brand {
   background-image: var(--gradient-brand);
 }
+
+/* Modern Professional Scrollbar Design System */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.75 0.02 250 / 50%);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.55 0.08 256 / 80%);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(0.35 0.03 260 / 60%);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.55 0.06 260 / 85%);
+}
+
+/* Firefox scrollbar support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.75 0.02 250 / 50%) transparent;
+}
+
+.dark * {
+  scrollbar-color: oklch(0.35 0.03 260 / 60%) transparent;
+}

@@ -544,6 +544,7 @@ export type Database = {
           id: string
           invoice_id: string | null
           lead_id: string | null
+          meeting_link: string | null
           notes: string | null
           organization_id: string
           outcome: string | null
@@ -566,6 +567,7 @@ export type Database = {
           id?: string
           invoice_id?: string | null
           lead_id?: string | null
+          meeting_link?: string | null
           notes?: string | null
           organization_id: string
           outcome?: string | null
@@ -588,6 +590,7 @@ export type Database = {
           id?: string
           invoice_id?: string | null
           lead_id?: string | null
+          meeting_link?: string | null
           notes?: string | null
           organization_id?: string
           outcome?: string | null

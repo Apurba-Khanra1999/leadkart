@@ -6,11 +6,13 @@ import {
   AlarmClock,
   CalendarDays,
   CheckCircle2,
+  ExternalLink,
   Loader2,
   Pencil,
   Plus,
   RotateCcw,
   Sun,
+  Video,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -39,7 +42,7 @@ import {
   SelectFilter,
 } from "@/components/crm/filters";
 import { can, useWorkspace } from "@/hooks/use-workspace";
-import { formatDateTime, initials, relativeDay } from "@/lib/crm";
+import { formatDateTime, initials, relativeDay, getMeetLink, formatNotesWithMeetLink } from "@/lib/crm";
 import {
   fetchProductLines,
   saveRecordProducts,
@@ -132,6 +135,7 @@ function FollowUpsPage() {
 
   const [open, setOpen] = useState(false);
   const [editRow, setEditRow] = useState<FollowUpRow | null>(null);
+  const [presetType, setPresetType] = useState<string | undefined>(undefined);
   const [detailTarget, setDetailTarget] = useState<FollowUpDetailTarget | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState(ALL);
@@ -147,12 +151,14 @@ function FollowUpsPage() {
         supabase
           .from("leads")
           .select("id, first_name, last_name, company")
+          .eq("organization_id", orgId!)
           .is("deleted_at", null)
           .order("created_at", { ascending: false })
           .limit(200),
         supabase
           .from("organization_members")
           .select("id, full_name")
+          .eq("organization_id", orgId!)
           .eq("status", "active")
           .order("full_name"),
       ]);
@@ -169,6 +175,7 @@ function FollowUpsPage() {
         .select(
           "id, type, due_at, priority, status, subject, notes, outcome, lead_id, assigned_member_id, completed_at",
         )
+        .eq("organization_id", orgId!)
         .order("due_at");
       if (error) throw error;
       return data;
@@ -192,6 +199,7 @@ function FollowUpsPage() {
 
   function invalidateAll() {
     queryClient.invalidateQueries({ queryKey: ["follow-ups", orgId] });
+    queryClient.invalidateQueries({ queryKey: ["demos", orgId] });
     queryClient.invalidateQueries({ queryKey: ["follow-up-detail"] });
     queryClient.invalidateQueries({ queryKey: ["lead-detail"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard", orgId] });
@@ -227,7 +235,7 @@ function FollowUpsPage() {
           priority: payload.priority as "low" | "medium" | "high" | "urgent",
           lead_id: payload.lead_id,
           assigned_member_id: payload.assigned_member_id,
-          notes: payload.notes || null,
+          notes: formatNotesWithMeetLink(payload.notes, (payload as any).meeting_link),
         })
         .eq("id", id);
       if (error) throw error;
@@ -258,7 +266,7 @@ function FollowUpsPage() {
         priority: payload.priority as "low" | "medium" | "high" | "urgent",
         lead_id: payload.lead_id,
         assigned_member_id: payload.assigned_member_id ?? ws?.memberId ?? null,
-        notes: payload.notes || null,
+        notes: formatNotesWithMeetLink(payload.notes, (payload as any).meeting_link),
         })
         .select("id")
         .single();
@@ -370,18 +378,29 @@ function FollowUpsPage() {
         subtitle={`${overdue.length} overdue · ${today.length} due today · ${upcoming.length} upcoming`}
         actions={
           canManage ? (
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-1 size-4" /> Schedule follow-up
-                </Button>
-              </DialogTrigger>
-              <FollowUpFormDialog
-                meta={meta.data}
-                saving={createFollowUp.isPending}
-                onSubmit={(payload) => createFollowUp.mutate(payload)}
-              />
-            </Dialog>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                className="border-indigo-200 text-indigo-700 dark:text-indigo-300 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950"
+                onClick={() => {
+                  setEditRow(null);
+                  setPresetType("demo");
+                  setOpen(true);
+                }}
+              >
+                <Video className="mr-1.5 size-4 text-indigo-600 dark:text-indigo-400" /> Schedule Demo
+              </Button>
+
+              <Button
+                onClick={() => {
+                  setEditRow(null);
+                  setPresetType(undefined);
+                  setOpen(true);
+                }}
+              >
+                <Plus className="mr-1.5 size-4" /> Schedule follow-up
+              </Button>
+            </div>
           ) : null
         }
       />
@@ -504,7 +523,19 @@ function FollowUpsPage() {
                       {formatDateTime(item.due_at)} ({relativeDay(item.due_at)})
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {Boolean(getMeetLink(item)) && (
+                      <a
+                        href={getMeetLink(item)!.startsWith("http") ? getMeetLink(item)! : `https://${getMeetLink(item)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold text-xs border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors"
+                      >
+                        <Video className="size-3.5 text-indigo-600 dark:text-indigo-400" />
+                        <span>Join Meet</span>
+                        <ExternalLink className="size-3 opacity-70" />
+                      </a>
+                    )}
                     <Badge variant="outline">
                       {TYPE_OPTIONS.find((t) => t.id === item.type)?.name ?? item.type}
                     </Badge>
@@ -561,28 +592,55 @@ function FollowUpsPage() {
         </Tabs>
       )}
 
-      <Dialog open={Boolean(editRow)} onOpenChange={(o) => !o && setEditRow(null)}>
-        {editRow && (
-          <FollowUpFormDialog
-            key={editRow.id}
-            title="Edit follow-up"
-            description="Changes are reflected on the linked lead straight away."
-            submitLabel="Save changes"
-            meta={meta.data}
-            saving={updateFollowUp.isPending}
-            initial={{
-              subject: editRow.subject ?? "",
-              type: editRow.type,
-              due_at: toLocalInput(editRow.due_at),
-              priority: editRow.priority,
-              lead_id: editRow.lead_id,
-              assigned_member_id: editRow.assigned_member_id,
-              notes: editRow.notes ?? "",
-            }}
-            followUpId={editRow.id}
-            onSubmit={(payload) => updateFollowUp.mutate({ id: editRow.id, payload })}
-          />
-        )}
+      <Dialog
+        open={open || Boolean(editRow)}
+        onOpenChange={(o) => {
+          setOpen(o);
+          if (!o) {
+            setEditRow(null);
+            setPresetType(undefined);
+          }
+        }}
+      >
+        <FollowUpFormDialog
+          key={editRow?.id ?? presetType ?? "new"}
+          title={editRow ? "Edit follow-up" : presetType === "demo" ? "Schedule Product Demo" : "Schedule follow-up"}
+          description={
+            presetType === "demo"
+              ? "Schedule a Google Meet demo session with a lead."
+              : "Follow-ups appear on the dashboard as soon as they are due."
+          }
+          submitLabel={editRow ? "Save changes" : presetType === "demo" ? "Schedule Demo" : "Schedule"}
+          meta={meta.data}
+          saving={createFollowUp.isPending || updateFollowUp.isPending}
+          initial={
+            editRow
+              ? {
+                  subject: editRow.subject ?? "",
+                  type: editRow.type,
+                  due_at: toLocalInput(editRow.due_at),
+                  meeting_link: getMeetLink(editRow) ?? "",
+                  priority: editRow.priority,
+                  lead_id: editRow.lead_id,
+                  assigned_member_id: editRow.assigned_member_id,
+                  notes: editRow.notes ?? "",
+                }
+              : presetType === "demo"
+                ? ({
+                    type: "demo",
+                    subject: "Product Demo",
+                    due_at: "",
+                    priority: "medium",
+                    meeting_link: generateMeetLink(),
+                  } as any)
+                : undefined
+          }
+          followUpId={editRow?.id}
+          onSubmit={(payload) => {
+            if (editRow) updateFollowUp.mutate({ id: editRow.id, payload });
+            else createFollowUp.mutate(payload);
+          }}
+        />
       </Dialog>
 
       <FollowUpDetailSheet
@@ -607,6 +665,14 @@ function FollowUpsPage() {
   );
 }
 
+function generateMeetLink() {
+  const chars = "abcdefghijklmnopqrstuvwxyz";
+  const part1 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  const part2 = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  const part3 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  return `https://meet.google.com/${part1}-${part2}-${part3}`;
+}
+
 type FollowUpMeta = {
   leads: { id: string; first_name: string; last_name: string | null; company: string | null }[];
   members: { id: string; full_name: string }[];
@@ -625,20 +691,34 @@ function FollowUpFormDialog({
   meta: FollowUpMeta | undefined;
   saving: boolean;
   onSubmit: (payload: FollowUpFormValues) => void;
-  initial?: FollowUpFormValues;
-  followUpId?: string;
+  initial?: FollowUpFormValues | undefined;
+  followUpId?: string | undefined;
   title?: string;
   description?: string;
   submitLabel?: string;
 }) {
-  const [subject, setSubject] = useState(initial?.subject ?? "");
+  const [subject, setSubject] = useState(initial?.subject ?? (initial?.type === "demo" ? "Product Demo" : ""));
   const [type, setType] = useState(initial?.type ?? "call");
   const [dueAt, setDueAt] = useState(initial?.due_at ?? "");
+  const [meetingLink, setMeetingLink] = useState((initial as any)?.meeting_link || (initial?.type === "demo" ? generateMeetLink() : ""));
   const [priority, setPriority] = useState(initial?.priority ?? "medium");
   const [leadId, setLeadId] = useState(initial?.lead_id ?? "");
   const [memberId, setMemberId] = useState(initial?.assigned_member_id ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const { data: ws } = useWorkspace();
+
+  useEffect(() => {
+    if (initial) {
+      setSubject(initial.subject ?? (initial.type === "demo" ? "Product Demo" : ""));
+      setType(initial.type ?? "call");
+      setDueAt(initial.due_at ?? "");
+      setMeetingLink((initial as any)?.meeting_link || (initial.type === "demo" ? generateMeetLink() : ""));
+      setPriority(initial.priority ?? "medium");
+      setLeadId(initial.lead_id ?? "");
+      setMemberId(initial.assigned_member_id ?? "");
+      setNotes(initial.notes ?? "");
+    }
+  }, [initial]);
   const products = useProducts(ws?.organizationId);
   const [lines, setLines] = useState<ProductLine[]>([]);
 
@@ -677,7 +757,16 @@ function FollowUpFormDialog({
           id="fu-type"
           label="Type"
           value={type}
-          onChange={setType}
+          onChange={(v) => {
+            setType(v);
+            if (v === "demo" && !meetingLink) {
+              const chars = "abcdefghijklmnopqrstuvwxyz";
+              const p1 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+              const p2 = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+              const p3 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+              setMeetingLink(`https://meet.google.com/${p1}-${p2}-${p3}`);
+            }
+          }}
           options={TYPE_OPTIONS}
         />
         <TextField
@@ -687,6 +776,34 @@ function FollowUpFormDialog({
           value={dueAt}
           onChange={setDueAt}
         />
+
+        {/* Google Meet Link Field */}
+        <div className="sm:col-span-2 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-foreground">Google Meet Link</label>
+            <button
+              type="button"
+              onClick={() => {
+                const chars = "abcdefghijklmnopqrstuvwxyz";
+                const p1 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+                const p2 = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+                const p3 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+                setMeetingLink(`https://meet.google.com/${p1}-${p2}-${p3}`);
+              }}
+              className="text-xs text-primary hover:underline font-medium"
+            >
+              Generate Link
+            </button>
+          </div>
+          <Input
+            id="fu-meet"
+            type="url"
+            value={meetingLink}
+            onChange={(e) => setMeetingLink(e.target.value)}
+            placeholder="https://meet.google.com/abc-defg-hij"
+          />
+        </div>
+
         <PickerField
           id="fu-priority"
           label="Priority"
@@ -735,12 +852,13 @@ function FollowUpFormDialog({
               subject,
               type,
               due_at: dueAt,
+              meeting_link: meetingLink || null,
               priority,
               lead_id: leadId || null,
               assigned_member_id: memberId || null,
               notes,
               lines,
-            })
+            } as any)
           }
         >
           {saving && <Loader2 className="mr-1 size-4 animate-spin" />}

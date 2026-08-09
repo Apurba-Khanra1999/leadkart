@@ -9,6 +9,7 @@ import {
   Pencil,
   Send,
   UserRoundPlus,
+  Video,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -55,6 +56,7 @@ export function LeadDetailSheet({
   ownerName,
   onEdit,
   onScheduleFollowUp,
+  onScheduleDemo,
   onConvert,
   canConvert,
   canUpdate,
@@ -67,6 +69,7 @@ export function LeadDetailSheet({
   ownerName?: string | null | undefined;
   onEdit?: () => void;
   onScheduleFollowUp?: () => void;
+  onScheduleDemo?: () => void;
   onConvert?: () => void;
   canConvert?: boolean;
   canUpdate?: boolean;
@@ -240,6 +243,11 @@ export function LeadDetailSheet({
             {canFollowUp && onScheduleFollowUp && (
               <Button size="sm" variant="outline" onClick={onScheduleFollowUp}>
                 <CalendarClock className="mr-1 size-3.5" /> Follow-up
+              </Button>
+            )}
+            {canFollowUp && onScheduleDemo && (
+              <Button size="sm" variant="outline" className="border-indigo-200 text-indigo-700 dark:text-indigo-300 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950" onClick={onScheduleDemo}>
+                <Video className="mr-1 size-3.5 text-indigo-600" /> Schedule Demo
               </Button>
             )}
             {canConvert && onConvert && !lead?.converted_client_id && (

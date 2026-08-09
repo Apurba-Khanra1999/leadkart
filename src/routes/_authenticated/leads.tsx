@@ -12,6 +12,7 @@ import {
   Plus,
   Trash2,
   UserRoundPlus,
+  Video,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -64,7 +66,7 @@ import {
   SelectFilter,
 } from "@/components/crm/filters";
 import { can, useWorkspace } from "@/hooks/use-workspace";
-import { formatMoney, formatDate, formatDateTime, initials } from "@/lib/crm";
+import { formatMoney, formatDate, formatDateTime, initials, formatNotesWithMeetLink } from "@/lib/crm";
 import {
   fetchProductLines,
   saveRecordProducts,
@@ -214,6 +216,7 @@ function LeadsPage() {
   const [editLead, setEditLead] = useState<LeadRow | null>(null);
   const [convertLead, setConvertLead] = useState<LeadRow | null>(null);
   const [followUpLead, setFollowUpLead] = useState<LeadRow | null>(null);
+  const [demoLead, setDemoLead] = useState<LeadRow | null>(null);
   const [detailLead, setDetailLead] = useState<LeadRow | null>(null);
 
   const meta = useQuery({
@@ -455,6 +458,54 @@ function LeadsPage() {
     },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : "Could not schedule follow-up"),
+  });
+
+  const scheduleDemo = useMutation({
+    mutationFn: async (payload: {
+      lead: LeadRow;
+      subject: string;
+      due_at: string;
+      meeting_link: string;
+      priority: string;
+      assigned_member_id: string | null;
+      notes: string;
+    }) => {
+      if (!orgId) throw new Error("Workspace not ready");
+      if (!payload.due_at) throw new Error("Pick a date and time for the demo");
+      const dueIso = new Date(payload.due_at).toISOString();
+
+      const { error } = await supabase.from("follow_ups").insert({
+        organization_id: orgId,
+        created_by: ws?.memberId ?? null,
+        lead_id: payload.lead.id,
+        subject: payload.subject || `Product Demo — ${leadName(payload.lead)}`,
+        type: "demo",
+        due_at: dueIso,
+        priority: payload.priority as Priority,
+        assigned_member_id:
+          payload.assigned_member_id ?? payload.lead.assigned_member_id ?? ws?.memberId ?? null,
+        notes: formatNotesWithMeetLink(payload.notes, payload.meeting_link),
+        status: "pending",
+      });
+      if (error) throw error;
+
+      const current = payload.lead.next_followup_at
+        ? new Date(payload.lead.next_followup_at).getTime()
+        : null;
+      if (!current || new Date(dueIso).getTime() < current) {
+        await supabase.from("leads").update({ next_followup_at: dueIso }).eq("id", payload.lead.id);
+      }
+    },
+    onSuccess: () => {
+      toast.success("Product demo scheduled successfully!");
+      setDemoLead(null);
+      invalidateLeads();
+      queryClient.invalidateQueries({ queryKey: ["demos", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["follow-ups", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard", orgId] });
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Could not schedule product demo"),
   });
 
   function invalidateLeads() {
@@ -853,6 +904,11 @@ function LeadsPage() {
                                   <CalendarClock className="mr-2 size-3.5" /> Schedule follow-up
                                 </DropdownMenuItem>
                               )}
+                              {canFollowUp && (
+                                <DropdownMenuItem onSelect={() => setDemoLead(lead)}>
+                                  <Video className="mr-2 size-3.5 text-primary" /> Schedule product demo
+                                </DropdownMenuItem>
+                              )}
                               {canConvert && !lead.converted_client_id && (
                                 <DropdownMenuItem onSelect={() => setConvertLead(lead)}>
                                   <UserRoundPlus className="mr-2 size-3.5" /> Add to clients
@@ -934,6 +990,17 @@ function LeadsPage() {
         )}
       </Dialog>
 
+      <Dialog open={Boolean(demoLead)} onOpenChange={(next) => !next && setDemoLead(null)}>
+        {demoLead && (
+          <LeadDemoDialog
+            lead={demoLead}
+            members={(meta.data?.members ?? []).map((m) => ({ id: m.id, name: m.full_name }))}
+            saving={scheduleDemo.isPending}
+            onSubmit={(payload) => scheduleDemo.mutate({ lead: demoLead, ...payload })}
+          />
+        )}
+      </Dialog>
+
       <LeadDetailSheet
         target={
           detailLead
@@ -955,6 +1022,11 @@ function LeadsPage() {
         canUpdate={canUpdate}
         canFollowUp={canFollowUp}
         canConvert={canConvert}
+        onScheduleDemo={() => {
+          const lead = detailLead;
+          setDetailLead(null);
+          setDemoLead(lead);
+        }}
         onEdit={() => {
           const lead = detailLead;
           setDetailLead(null);
@@ -1344,6 +1416,130 @@ function LeadFollowUpDialog({
           }
         >
           {saving && <Loader2 className="mr-2 size-4 animate-spin" />} Schedule
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+function LeadDemoDialog({
+  lead,
+  members,
+  saving,
+  onSubmit,
+}: {
+  lead: LeadRow;
+  members: { id: string; name: string }[];
+  saving: boolean;
+  onSubmit: (payload: {
+    subject: string;
+    due_at: string;
+    meeting_link: string;
+    priority: string;
+    assigned_member_id: string | null;
+    notes: string;
+  }) => void;
+}) {
+  const [subject, setSubject] = useState(`Product Demo — ${leadName(lead)}`);
+  const [dueAt, setDueAt] = useState(() => {
+    const now = new Date();
+    now.setHours(now.getHours() + 2, 0, 0, 0);
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  });
+  const [meetingLink, setMeetingLink] = useState(() => {
+    const chars = "abcdefghijklmnopqrstuvwxyz";
+    const p1 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const p2 = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const p3 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    return `https://meet.google.com/${p1}-${p2}-${p3}`;
+  });
+  const [priority, setPriority] = useState(lead.priority ?? "medium");
+  const [memberId, setMemberId] = useState(lead.assigned_member_id ?? "");
+  const [notes, setNotes] = useState("");
+
+  return (
+    <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <Video className="size-5 text-indigo-600 dark:text-indigo-400" /> Schedule Product Demo
+        </DialogTitle>
+        <DialogDescription>
+          Creates a Google Meet demo session linked to {leadName(lead)}. Appears on the Demos page and Follow-ups calendar.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <TextField id="ldemo-subject" label="Subject" value={subject} onChange={setSubject} />
+        </div>
+        <TextField
+          id="ldemo-due"
+          label="Scheduled Date & Time"
+          type="datetime-local"
+          value={dueAt}
+          onChange={setDueAt}
+        />
+        <PickerField
+          id="ldemo-priority"
+          label="Priority"
+          value={priority}
+          onChange={setPriority}
+          options={PRIORITY_OPTIONS}
+        />
+        <div className="sm:col-span-2 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-foreground">Google Meet Link</label>
+            <button
+              type="button"
+              onClick={() => {
+                const chars = "abcdefghijklmnopqrstuvwxyz";
+                const p1 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+                const p2 = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+                const p3 = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+                setMeetingLink(`https://meet.google.com/${p1}-${p2}-${p3}`);
+              }}
+              className="text-xs text-primary hover:underline font-medium"
+            >
+              Generate Link
+            </button>
+          </div>
+          <Input
+            id="ldemo-meet"
+            type="url"
+            value={meetingLink}
+            onChange={(e) => setMeetingLink(e.target.value)}
+            placeholder="https://meet.google.com/abc-defg-hij"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <PickerField
+            id="ldemo-owner"
+            label="Assign Host"
+            value={memberId}
+            onChange={setMemberId}
+            options={members}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <AreaField id="ldemo-notes" label="Agenda & Notes" value={notes} onChange={setNotes} />
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button
+          disabled={saving}
+          onClick={() =>
+            onSubmit({
+              subject,
+              due_at: dueAt,
+              meeting_link: meetingLink,
+              priority,
+              assigned_member_id: memberId || null,
+              notes,
+            })
+          }
+        >
+          {saving && <Loader2 className="mr-2 size-4 animate-spin" />} Schedule Demo
         </Button>
       </DialogFooter>
     </DialogContent>

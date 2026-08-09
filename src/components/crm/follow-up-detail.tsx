@@ -8,6 +8,7 @@ import {
   Pencil,
   RotateCcw,
   Send,
+  UserRoundPlus,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +52,7 @@ export function FollowUpDetailSheet({
   onEdit,
   onComplete,
   onReopen,
+  onConvertToClient,
   canManage,
 }: {
   target: FollowUpDetailTarget | null;
@@ -58,9 +60,10 @@ export function FollowUpDetailSheet({
   leadName?: string | null;
   ownerName?: string | null;
   typeLabel?: string | null;
-  onEdit?: () => void;
-  onComplete?: () => void;
-  onReopen?: () => void;
+  onEdit?: (() => void) | undefined;
+  onComplete?: (() => void) | undefined;
+  onReopen?: (() => void) | undefined;
+  onConvertToClient?: (() => void) | undefined;
   canManage?: boolean;
 }) {
   const { data: ws } = useWorkspace();
@@ -202,6 +205,11 @@ export function FollowUpDetailSheet({
             {canManage && followUp && followUp.status !== "pending" && onReopen && (
               <Button size="sm" variant="outline" onClick={onReopen}>
                 <RotateCcw className="mr-1 size-3.5" /> Reopen
+              </Button>
+            )}
+            {canManage && onConvertToClient && (
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onConvertToClient}>
+                <UserRoundPlus className="mr-1.5 size-3.5" /> Add to clients
               </Button>
             )}
           </div>
