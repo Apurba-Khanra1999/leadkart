@@ -1,0 +1,17 @@
+REVOKE ALL ON FUNCTION public.next_record_number(uuid, text, text, text) FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.recalc_invoice_totals(uuid) FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.set_payment_number() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.set_lead_number() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.set_client_code() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.set_deal_number() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.set_invoice_number() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.set_quotation_number() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.payments_sync_invoice() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.seed_new_organization() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.handle_new_user() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.deal_weighted() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.invoice_before_write() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.touch_updated_at() FROM anon, authenticated, public;
+REVOKE ALL ON FUNCTION public.is_org_member(uuid) FROM anon, public;
+REVOKE ALL ON FUNCTION public.has_perm(uuid, text) FROM anon, public;
+REVOKE ALL ON FUNCTION public.current_member_id(uuid) FROM anon, public;
