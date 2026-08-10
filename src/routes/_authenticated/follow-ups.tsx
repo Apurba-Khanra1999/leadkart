@@ -12,6 +12,7 @@ import {
   Plus,
   RotateCcw,
   Sun,
+  UserRoundPlus,
   Video,
 } from "lucide-react";
 
@@ -42,7 +43,14 @@ import {
   SelectFilter,
 } from "@/components/crm/filters";
 import { can, useWorkspace } from "@/hooks/use-workspace";
-import { formatDateTime, initials, relativeDay, getMeetLink, formatNotesWithMeetLink } from "@/lib/crm";
+import {
+  formatDateTime,
+  initials,
+  relativeDay,
+  getMeetLink,
+  formatNotesWithMeetLink,
+  INDUSTRY_OPTIONS,
+} from "@/lib/crm";
 import {
   fetchProductLines,
   saveRecordProducts,
@@ -132,11 +140,14 @@ function FollowUpsPage() {
   const queryClient = useQueryClient();
   const canManage = can(ws, "followups.manage");
   const canView = can(ws, "followups.view.all") || can(ws, "followups.view.own");
+  const canConvert = can(ws, "leads.convert") && can(ws, "clients.manage");
 
   const [open, setOpen] = useState(false);
   const [editRow, setEditRow] = useState<FollowUpRow | null>(null);
   const [presetType, setPresetType] = useState<string | undefined>(undefined);
   const [detailTarget, setDetailTarget] = useState<FollowUpDetailTarget | null>(null);
+  const [convertTarget, setConvertTarget] = useState<any>(null);
+
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState(ALL);
   const [priorityFilter, setPriorityFilter] = useState(ALL);
@@ -147,10 +158,10 @@ function FollowUpsPage() {
     queryKey: ["followup-meta", orgId],
     enabled: Boolean(orgId),
     queryFn: async () => {
-      const [leads, members] = await Promise.all([
+      const [leads, members, statuses] = await Promise.all([
         supabase
           .from("leads")
-          .select("id, first_name, last_name, company")
+          .select("id, first_name, last_name, company, email, phone, industry, converted_client_id")
           .eq("organization_id", orgId!)
           .is("deleted_at", null)
           .order("created_at", { ascending: false })
@@ -161,8 +172,16 @@ function FollowUpsPage() {
           .eq("organization_id", orgId!)
           .eq("status", "active")
           .order("full_name"),
+        supabase
+          .from("lead_statuses")
+          .select("id, name, is_won")
+          .eq("organization_id", orgId!),
       ]);
-      return { leads: leads.data ?? [], members: members.data ?? [] };
+      return {
+        leads: leads.data ?? [],
+        members: members.data ?? [],
+        statuses: statuses.data ?? [],
+      };
     },
   });
 
@@ -173,7 +192,7 @@ function FollowUpsPage() {
       const { data, error } = await supabase
         .from("follow_ups")
         .select(
-          "id, type, due_at, priority, status, subject, notes, outcome, lead_id, assigned_member_id, completed_at",
+          "id, type, due_at, priority, status, subject, notes, outcome, lead_id, assigned_member_id, completed_at, leads(id, first_name, last_name, company, email, phone, industry, converted_client_id)",
         )
         .eq("organization_id", orgId!)
         .order("due_at");
@@ -207,6 +226,86 @@ function FollowUpsPage() {
     queryClient.invalidateQueries({ queryKey: ["followup-product-lines"] });
     queryClient.invalidateQueries({ queryKey: ["lead-product-lines"] });
   }
+
+  // Convert Follow-Up Prospect / Lead to Client
+  const convertFollowUpToClientMutation = useMutation({
+    mutationFn: async (payload: {
+      followUpId: string;
+      leadId: string | null;
+      company_name: string;
+      contact_person: string;
+      email: string;
+      phone: string;
+      industry: string;
+      account_manager_id: string | null;
+      notes: string;
+      status: string;
+    }) => {
+      if (!orgId) throw new Error("Workspace not ready");
+      if (!payload.company_name.trim()) throw new Error("Company name is required");
+
+      // 1. Insert Client Record
+      const { data: client, error: clientErr } = await supabase
+        .from("clients")
+        .insert({
+          organization_id: orgId,
+          created_by: ws?.memberId ?? null,
+          company_name: payload.company_name.trim(),
+          contact_person: payload.contact_person || null,
+          phone: payload.phone || null,
+          email: payload.email || null,
+          industry: payload.industry || null,
+          account_manager_id: payload.account_manager_id ?? ws?.memberId ?? null,
+          notes: payload.notes || null,
+          status: payload.status as "active" | "inactive" | "vip" | "at_risk" | "lost",
+        })
+        .select("id, company_name")
+        .single();
+
+      if (clientErr) throw clientErr;
+
+      // 2. Mark follow-up completed if pending
+      await supabase
+        .from("follow_ups")
+        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .eq("id", payload.followUpId);
+
+      // 3. Update lead converted_client_id if associated
+      if (payload.leadId) {
+        const wonStatus = (meta.data?.statuses ?? []).find((s) => s.is_won);
+        await supabase
+          .from("leads")
+          .update({
+            converted_client_id: client.id,
+            converted_at: new Date().toISOString(),
+            ...(wonStatus ? { status_id: wonStatus.id } : {}),
+          })
+          .eq("id", payload.leadId);
+
+        // 4. Log conversion activity
+        await supabase.from("activities").insert({
+          organization_id: orgId,
+          type: "lead_converted",
+          title: `Prospect converted to client ${client.company_name} from follow-up`,
+          lead_id: payload.leadId,
+          client_id: client.id,
+          actor_member_id: ws?.memberId ?? null,
+          actor_name: ws?.fullName ?? null,
+        });
+      }
+
+      return client;
+    },
+    onSuccess: (client) => {
+      toast.success(`${client.company_name} added to Clients page!`);
+      setConvertTarget(null);
+      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["clients", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["clients-lite", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["leads", orgId] });
+    },
+    onError: (err: any) => toast.error(err.message || "Could not add to clients"),
+  });
 
   const reopen = useMutation({
     mutationFn: async (id: string) => {
@@ -497,94 +596,119 @@ function FollowUpsPage() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {group.items.length === 0 && <EmptyState message={group.empty} />}
-                  {group.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="hover:bg-muted/40 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <button
-                      type="button"
-                      className="truncate text-left text-sm font-medium hover:underline"
-                      onClick={() =>
-                        setDetailTarget({
-                          id: item.id,
-                          subject:
-                            item.subject ??
-                            TYPE_OPTIONS.find((t) => t.id === item.type)?.name ??
-                            "Follow-up",
-                        })
-                      }
-                    >
-                      {item.subject ?? TYPE_OPTIONS.find((t) => t.id === item.type)?.name}
-                    </button>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {item.lead_id ? leadMap.get(item.lead_id) ?? "Lead" : "No linked record"} ·{" "}
-                      {formatDateTime(item.due_at)} ({relativeDay(item.due_at)})
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {Boolean(getMeetLink(item)) && (
-                      <a
-                        href={getMeetLink(item)!.startsWith("http") ? getMeetLink(item)! : `https://${getMeetLink(item)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold text-xs border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors"
+                  {group.items.map((item) => {
+                    const lead = (item.leads as any) || (meta.data?.leads ?? []).find((l) => l.id === item.lead_id);
+                    const isConverted = Boolean(lead?.converted_client_id);
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="hover:bg-muted/40 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 transition-colors"
                       >
-                        <Video className="size-3.5 text-indigo-600 dark:text-indigo-400" />
-                        <span>Join Meet</span>
-                        <ExternalLink className="size-3 opacity-70" />
-                      </a>
-                    )}
-                    <Badge variant="outline">
-                      {TYPE_OPTIONS.find((t) => t.id === item.type)?.name ?? item.type}
-                    </Badge>
-                    <Badge variant={item.priority === "urgent" ? "destructive" : "secondary"}>
-                      {item.priority}
-                    </Badge>
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span className="flex size-6 items-center justify-center rounded-full bg-secondary text-[10px] font-semibold">
-                        {initials(
-                          item.assigned_member_id ? memberMap.get(item.assigned_member_id) : null,
-                        )}
-                      </span>
-                      {item.assigned_member_id
-                        ? memberMap.get(item.assigned_member_id) ?? "—"
-                        : "Unassigned"}
-                    </span>
-                    {canManage && (
-                      <Button size="sm" variant="ghost" onClick={() => setEditRow(item)}>
-                        <Pencil className="mr-1 size-3.5" /> Edit
-                      </Button>
-                    )}
-                    {item.status === "pending" && canManage && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={complete.isPending}
-                        onClick={() => complete.mutate(item.id)}
-                      >
-                        <CheckCircle2 className="mr-1 size-3.5" /> Complete
-                      </Button>
-                    )}
-                    {item.status !== "pending" && (
-                      <>
-                        <Badge>{item.status}</Badge>
-                        {canManage && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={reopen.isPending}
-                            onClick={() => reopen.mutate(item.id)}
+                        <div className="min-w-0">
+                          <button
+                            type="button"
+                            className="truncate text-left text-sm font-medium hover:underline"
+                            onClick={() =>
+                              setDetailTarget({
+                                id: item.id,
+                                subject:
+                                  item.subject ??
+                                  TYPE_OPTIONS.find((t) => t.id === item.type)?.name ??
+                                  "Follow-up",
+                              })
+                            }
                           >
-                            <RotateCcw className="mr-1 size-3.5" /> Reopen
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-                  ))}
+                            {item.subject ?? TYPE_OPTIONS.find((t) => t.id === item.type)?.name}
+                          </button>
+                          <p className="truncate text-xs text-muted-foreground mt-0.5">
+                            {item.lead_id ? leadMap.get(item.lead_id) ?? "Lead" : "No linked record"} ·{" "}
+                            {formatDateTime(item.due_at)} ({relativeDay(item.due_at)})
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {Boolean(getMeetLink(item)) && (
+                            <a
+                              href={getMeetLink(item)!.startsWith("http") ? getMeetLink(item)! : `https://${getMeetLink(item)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold text-xs border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-colors shrink-0"
+                            >
+                              <Video className="size-3.5 text-indigo-600 dark:text-indigo-400" />
+                              <span>Join Meet</span>
+                              <ExternalLink className="size-3 opacity-70" />
+                            </a>
+                          )}
+                          <Badge variant="outline">
+                            {TYPE_OPTIONS.find((t) => t.id === item.type)?.name ?? item.type}
+                          </Badge>
+                          <Badge variant={item.priority === "urgent" ? "destructive" : "secondary"}>
+                            {item.priority}
+                          </Badge>
+                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className="flex size-6 items-center justify-center rounded-full bg-secondary text-[10px] font-semibold">
+                              {initials(
+                                item.assigned_member_id ? memberMap.get(item.assigned_member_id) : null,
+                              )}
+                            </span>
+                            {item.assigned_member_id
+                              ? memberMap.get(item.assigned_member_id) ?? "—"
+                              : "Unassigned"}
+                          </span>
+
+                          {/* Add to Clients Button */}
+                          {canConvert && !isConverted && (
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1 text-xs shrink-0"
+                              onClick={() => setConvertTarget(item)}
+                            >
+                              <UserRoundPlus className="size-3.5" />
+                              <span className="hidden sm:inline">Add to clients</span>
+                              <span className="sm:hidden">Client</span>
+                            </Button>
+                          )}
+
+                          {isConverted && (
+                            <Badge variant="outline" className="border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 font-medium text-[11px] shrink-0">
+                              Client Created
+                            </Badge>
+                          )}
+
+                          {canManage && (
+                            <Button size="sm" variant="ghost" onClick={() => setEditRow(item)}>
+                              <Pencil className="mr-1 size-3.5" /> Edit
+                            </Button>
+                          )}
+                          {item.status === "pending" && canManage && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={complete.isPending}
+                              onClick={() => complete.mutate(item.id)}
+                            >
+                              <CheckCircle2 className="mr-1 size-3.5" /> Complete
+                            </Button>
+                          )}
+                          {item.status !== "pending" && (
+                            <>
+                              <Badge>{item.status}</Badge>
+                              {canManage && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={reopen.isPending}
+                                  onClick={() => reopen.mutate(item.id)}
+                                >
+                                  <RotateCcw className="mr-1 size-3.5" /> Reopen
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -592,6 +716,7 @@ function FollowUpsPage() {
         </Tabs>
       )}
 
+      {/* Schedule / Edit Dialog Modal */}
       <Dialog
         open={open || Boolean(editRow)}
         onOpenChange={(o) => {
@@ -643,6 +768,20 @@ function FollowUpsPage() {
         />
       </Dialog>
 
+      {/* Convert Follow-up Prospect to Client Modal Dialog */}
+      <Dialog open={Boolean(convertTarget)} onOpenChange={(o) => !o && setConvertTarget(null)}>
+        {convertTarget && (
+          <ConvertFollowUpToClientDialog
+            item={convertTarget}
+            members={meta.data?.members ?? []}
+            saving={convertFollowUpToClientMutation.isPending}
+            onClose={() => setConvertTarget(null)}
+            onSubmit={(payload) => convertFollowUpToClientMutation.mutate(payload)}
+          />
+        )}
+      </Dialog>
+
+      {/* Detail Sheet */}
       <FollowUpDetailSheet
         target={detailTarget}
         onOpenChange={(o) => !o && setDetailTarget(null)}
@@ -653,6 +792,15 @@ function FollowUpsPage() {
         }
         typeLabel={
           TYPE_OPTIONS.find((t) => t.id === detailRow?.type)?.name ?? detailRow?.type ?? null
+        }
+        onConvertToClient={
+          canConvert && detailRow && !((detailRow.leads as any)?.converted_client_id || (meta.data?.leads ?? []).find((l) => l.id === detailRow.lead_id)?.converted_client_id)
+            ? () => {
+                const itemToConvert = detailRow;
+                setDetailTarget(null);
+                setConvertTarget(itemToConvert);
+              }
+            : undefined
         }
         onEdit={() => {
           if (detailRow) setEditRow(detailRow);
@@ -865,6 +1013,164 @@ function FollowUpFormDialog({
           {submitLabel}
         </Button>
       </DialogFooter>
+    </DialogContent>
+  );
+}
+
+function ConvertFollowUpToClientDialog({
+  item,
+  members,
+  saving,
+  onClose,
+  onSubmit,
+}: {
+  item: any;
+  members: { id: string; full_name: string }[];
+  saving: boolean;
+  onClose: () => void;
+  onSubmit: (payload: {
+    followUpId: string;
+    leadId: string | null;
+    company_name: string;
+    contact_person: string;
+    email: string;
+    phone: string;
+    industry: string;
+    account_manager_id: string | null;
+    notes: string;
+    status: string;
+  }) => void;
+}) {
+  const lead = item.leads as any;
+  const leadName = lead ? `${lead.first_name} ${lead.last_name ?? ""}`.trim() : "";
+
+  const [companyName, setCompanyName] = useState(
+    lead?.company || leadName || item.subject || "New Client",
+  );
+  const [contactPerson, setContactPerson] = useState(leadName);
+  const [email, setEmail] = useState(lead?.email ?? "");
+  const [phone, setPhone] = useState(lead?.phone ?? "");
+  const [industry, setIndustry] = useState(lead?.industry ?? "");
+  const [accountManagerId, setAccountManagerId] = useState(
+    item.assigned_member_id ?? lead?.assigned_member_id ?? "",
+  );
+  const [status, setStatus] = useState("active");
+  const [notes, setNotes] = useState(item.notes ?? "");
+
+  return (
+    <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto p-4 sm:p-6">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+          <UserRoundPlus className="size-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          Add to Clients Page
+        </DialogTitle>
+        <DialogDescription className="text-xs sm:text-sm">
+          Create an official client profile from this follow-up touchpoint.
+        </DialogDescription>
+      </DialogHeader>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit({
+            followUpId: item.id,
+            leadId: item.lead_id ?? null,
+            company_name: companyName,
+            contact_person: contactPerson,
+            email,
+            phone,
+            industry,
+            account_manager_id: accountManagerId || null,
+            notes,
+            status,
+          });
+        }}
+        className="space-y-4 py-2"
+      >
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <TextField
+              id="client-company"
+              label="Company Name *"
+              value={companyName}
+              onChange={setCompanyName}
+              placeholder="e.g. Acme Corporation"
+            />
+          </div>
+          <TextField
+            id="client-contact"
+            label="Primary Contact Person"
+            value={contactPerson}
+            onChange={setContactPerson}
+            placeholder="e.g. John Doe"
+          />
+          <TextField
+            id="client-email"
+            label="Email Address"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            placeholder="john@example.com"
+          />
+          <TextField
+            id="client-phone"
+            label="Phone Number"
+            type="tel"
+            value={phone}
+            onChange={setPhone}
+            placeholder="+91 98765 43210"
+          />
+          <PickerField
+            id="client-industry"
+            label="Industry"
+            value={industry}
+            onChange={setIndustry}
+            options={INDUSTRY_OPTIONS}
+            placeholder="Select industry"
+          />
+          <PickerField
+            id="client-manager"
+            label="Account Manager"
+            value={accountManagerId}
+            onChange={setAccountManagerId}
+            options={members.map((m) => ({ id: m.id, name: m.full_name }))}
+            placeholder="Select manager"
+          />
+          <PickerField
+            id="client-status"
+            label="Client Status"
+            value={status}
+            onChange={setStatus}
+            options={[
+              { id: "active", name: "Active" },
+              { id: "vip", name: "VIP" },
+              { id: "inactive", name: "Inactive" },
+            ]}
+          />
+          <div className="sm:col-span-2">
+            <AreaField
+              id="client-notes"
+              label="Account Notes"
+              value={notes}
+              onChange={setNotes}
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="flex-col-reverse sm:flex-row gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={saving}
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            {saving && <Loader2 className="mr-1.5 size-4 animate-spin" />}
+            <UserRoundPlus className="mr-1.5 size-4" /> Add to Clients Page
+          </Button>
+        </DialogFooter>
+      </form>
     </DialogContent>
   );
 }
