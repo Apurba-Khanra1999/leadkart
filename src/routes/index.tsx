@@ -75,7 +75,7 @@ function Index() {
   return (
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <span className="text-lg font-bold">Zenith CRM</span>
+        <span className="text-lg font-bold tracking-tight">LeadKart</span>
         <Button asChild variant="ghost" size="sm">
           <Link to="/auth">Sign in</Link>
         </Button>

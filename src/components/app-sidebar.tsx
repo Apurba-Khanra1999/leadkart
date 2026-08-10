@@ -65,14 +65,14 @@ export function AppSidebar({ workspace }: { workspace?: Workspace | null | undef
       <SidebarHeader>
         <div className="flex items-center gap-2 px-1 py-2">
           <div className="bg-brand flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-primary-foreground">
-            ZC
+          LK
           </div>
           {!collapsed && (
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-sidebar-foreground">
                 {workspace?.orgName ?? "Workspace"}
               </p>
-              <p className="truncate text-xs text-sidebar-foreground/60">Sales CRM</p>
+              <p className="truncate text-xs text-sidebar-foreground/60">LeadKart CRM</p>
             </div>
           )}
         </div>
