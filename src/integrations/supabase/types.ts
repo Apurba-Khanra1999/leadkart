@@ -654,6 +654,196 @@ export type Database = {
           },
         ]
       }
+      forms: {
+        Row: {
+          accent_color: string
+          auto_create_lead: boolean
+          created_at: string
+          created_by: string | null
+          default_assigned_to: string | null
+          default_deal_stage_id: string | null
+          default_lead_source_id: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          organization_id: string
+          redirect_url: string | null
+          slug: string
+          submission_count: number
+          submit_button_text: string
+          success_message: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string
+          auto_create_lead?: boolean
+          created_at?: string
+          created_by?: string | null
+          default_assigned_to?: string | null
+          default_deal_stage_id?: string | null
+          default_lead_source_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          redirect_url?: string | null
+          slug: string
+          submission_count?: number
+          submit_button_text?: string
+          success_message?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string
+          auto_create_lead?: boolean
+          created_at?: string
+          created_by?: string | null
+          default_assigned_to?: string | null
+          default_deal_stage_id?: string | null
+          default_lead_source_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          redirect_url?: string | null
+          slug?: string
+          submission_count?: number
+          submit_button_text?: string
+          success_message?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "organization_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forms_default_assigned_to_fkey"
+            columns: ["default_assigned_to"]
+            isOneToOne: false
+            referencedRelation: "organization_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forms_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_fields: {
+        Row: {
+          created_at: string
+          field_type: string
+          form_id: string
+          help_text: string | null
+          id: string
+          is_required: boolean
+          label: string
+          map_to_lead_field: string | null
+          options: Json | null
+          placeholder: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          field_type?: string
+          form_id: string
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          label: string
+          map_to_lead_field?: string | null
+          options?: Json | null
+          placeholder?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          field_type?: string
+          form_id?: string
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          label?: string
+          map_to_lead_field?: string | null
+          options?: Json | null
+          placeholder?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_fields_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      form_submissions: {
+        Row: {
+          data: Json
+          form_id: string
+          id: string
+          ip_address: string | null
+          lead_id: string | null
+          organization_id: string
+          submitted_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          data?: Json
+          form_id: string
+          id?: string
+          ip_address?: string | null
+          lead_id?: string | null
+          organization_id: string
+          submitted_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          data?: Json
+          form_id?: string
+          id?: string
+          ip_address?: string | null
+          lead_id?: string | null
+          organization_id?: string
+          submitted_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_submissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           description: string

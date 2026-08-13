@@ -11,6 +11,7 @@ import {
   UsersRound,
   Settings,
   PackageSearch,
+  ClipboardList,
 } from "lucide-react";
 
 import {
@@ -36,6 +37,7 @@ const salesItems = [
   { title: "Follow-ups", url: "/follow-ups", icon: CalendarClock },
   { title: "Demos", url: "/demos", icon: Video },
   { title: "Clients", url: "/clients", icon: Building2 },
+  { title: "Forms", url: "/forms", icon: ClipboardList },
 ] as const;
 
 const financeItems = [

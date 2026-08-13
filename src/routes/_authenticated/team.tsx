@@ -20,7 +20,7 @@ import {
   UserX,
 } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, createNonPersistedSupabaseClient } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -150,21 +150,76 @@ function TeamPage() {
       const existing = (members.data ?? []).find((m) => m.email.toLowerCase() === cleanEmail);
       if (existing) throw new Error("A team member with this email already exists in your workspace");
 
-      const { error } = await supabase.from("organization_members").insert({
-        organization_id: orgId,
-        full_name: payload.full_name || cleanEmail.split("@")[0]!,
-        email: cleanEmail,
-        role: payload.role,
-        status: "invited",
-      });
-      if (error) throw error;
+      const fullName = payload.full_name.trim() || cleanEmail.split("@")[0]!;
+
+      // 1. Insert/upsert into organization_members for current workspace organization FIRST
+      const { data: existingRecord } = await supabase
+        .from("organization_members")
+        .select("id")
+        .eq("email", cleanEmail)
+        .maybeSingle();
+
+      let memberRecordId: string;
+
+      if (existingRecord) {
+        memberRecordId = existingRecord.id;
+        const { error } = await supabase
+          .from("organization_members")
+          .update({
+            organization_id: orgId,
+            full_name: fullName,
+            role: payload.role,
+            status: "active",
+            joined_at: new Date().toISOString(),
+          })
+          .eq("id", existingRecord.id);
+        if (error) throw error;
+      } else {
+        const { data: inserted, error } = await supabase
+          .from("organization_members")
+          .insert({
+            organization_id: orgId,
+            full_name: fullName,
+            email: cleanEmail,
+            role: payload.role,
+            status: "active",
+            joined_at: new Date().toISOString(),
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        memberRecordId = inserted.id;
+      }
+
+      // 2. Create Supabase Auth user account using non-persisted auth client
+      if (payload.initial_password) {
+        const tempAuth = createNonPersistedSupabaseClient();
+        const { data: authRes, error: authErr } = await tempAuth.auth.signUp({
+          email: cleanEmail,
+          password: payload.initial_password,
+          options: {
+            data: { full_name: fullName },
+          },
+        });
+
+        if (authErr && !authErr.message.toLowerCase().includes("already registered")) {
+          console.warn("Notice during member Auth registration:", authErr.message);
+        }
+
+        if (authRes?.user?.id) {
+          // Link user_id directly to organization_members record
+          await supabase
+            .from("organization_members")
+            .update({ user_id: authRes.user.id })
+            .eq("id", memberRecordId);
+        }
+      }
     },
     onSuccess: (_, vars) => {
-      toast.success(
-        vars.initial_password
-          ? `Member added! Shared password: ${vars.initial_password}`
-          : "Invitation created — member will join automatically when signing up"
-      );
+      const msg = vars.initial_password
+        ? `Member added! They can log in with email: ${vars.email ?? ""} and password: ${vars.initial_password}`
+        : `${vars.full_name || vars.email} has been added and can log in immediately.`;
+      toast.success(msg, { duration: 6000 });
       setInviteOpen(false);
       invalidateAllTeamQueries();
     },
@@ -349,9 +404,9 @@ function TeamPage() {
           tone="default"
         />
         <KpiCard
-          label="Pending Invitations"
+          label="Awaiting Login"
           value={String(invitedCount)}
-          hint="Awaiting first sign in"
+          hint="Pre-registered, not yet signed in"
           icon={Mail}
           tone={invitedCount > 0 ? "warning" : "default"}
         />
@@ -801,10 +856,10 @@ function InviteDialog({
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
           <UserPlus className="size-5 text-indigo-600 dark:text-indigo-400" />
-          Add / Invite Team Member
+          Add Team Member
         </DialogTitle>
         <DialogDescription className="text-xs sm:text-sm">
-          Set up credentials for your team member to log in directly into LeadKart CRM.
+          Create an account for your team member. They will be <strong>immediately active</strong> and can log in with their email and the password you set.
         </DialogDescription>
       </DialogHeader>
 
@@ -832,10 +887,10 @@ function InviteDialog({
           options={ROLE_OPTIONS}
         />
 
-        {/* Initial Password Generator */}
+        {/* Password Generator — required so member can log in immediately */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-foreground">Login Password (Optional)</label>
+            <label className="text-xs font-medium text-foreground">Login Password *</label>
             <button
               type="button"
               onClick={generateRandomPassword}
@@ -846,14 +901,24 @@ function InviteDialog({
           </div>
           <Input
             id="invite-password"
+            required
             type="text"
             value={initialPassword}
             onChange={(e) => setInitialPassword(e.target.value)}
-            placeholder="Generate or enter temporary password"
+            placeholder="Set a password so they can log in now"
           />
-          {initialPassword && (
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium pt-0.5">
-              Copy this password to share with the team member.
+          {initialPassword ? (
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/50 px-3 py-2 mt-1">
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
+                ✓ Share these credentials with the team member so they can log in immediately.
+              </p>
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+                Email: {email || "<enter email above>"} · Password: {initialPassword}
+              </p>
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground pt-0.5">
+              Set or generate a password — the member will use this to log in right away.
             </p>
           )}
         </div>

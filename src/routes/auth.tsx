@@ -89,7 +89,22 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword(parsed.data);
+        let { error } = await supabase.auth.signInWithPassword(parsed.data);
+        if (error && error.message.toLowerCase().includes("invalid login credentials")) {
+          // Fallback: Attempt sign up in case Auth user was not pre-registered in auth.users.
+          // Database trigger handle_new_user() will automatically link their pre-added team member record!
+          const { error: signUpError } = await supabase.auth.signUp({
+            email: parsed.data.email,
+            password: parsed.data.password,
+            options: {
+              emailRedirectTo: window.location.origin,
+            },
+          });
+          if (!signUpError) {
+            const retryRes = await supabase.auth.signInWithPassword(parsed.data);
+            error = retryRes.error;
+          }
+        }
         if (error) throw error;
       } else {
         const { error } = await supabase.auth.signUp({
