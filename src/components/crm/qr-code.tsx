@@ -1,5 +1,6 @@
-import React, { useRef } from "react";
-import { Download, QrCode } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Download, QrCode, Copy, Check } from "lucide-react";
+import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -11,146 +12,131 @@ interface QRCodeGeneratorProps {
   title?: string;
 }
 
-// Lightweight QR matrix generator for standard URL sharing
-function generateQRMatrix(text: string): boolean[][] {
-  // Simple deterministic 21x21 QR Version 1 / 25x25 Version 2 pattern algorithm
-  const size = 25;
-  const matrix: boolean[][] = Array.from({ length: size }, () => Array(size).fill(false));
-
-  // Helper to place finder pattern (7x7 square)
-  const placeFinder = (startRow: number, startCol: number) => {
-    for (let r = 0; r < 7; r++) {
-      for (let c = 0; c < 7; c++) {
-        if (
-          r === 0 ||
-          r === 6 ||
-          c === 0 ||
-          c === 6 ||
-          (r >= 2 && r <= 4 && c >= 2 && c <= 4)
-        ) {
-          matrix[startRow + r]![startCol + c] = true;
-        }
-      }
-    }
-  };
-
-  // 1. Top-Left, Top-Right, Bottom-Left Finder patterns
-  placeFinder(0, 0);
-  placeFinder(0, size - 7);
-  placeFinder(size - 7, 0);
-
-  // 2. Timing patterns (Line 6)
-  for (let i = 8; i < size - 8; i++) {
-    if (i % 2 === 0) {
-      matrix[6]![i] = true;
-      matrix[i]![6] = true;
-    }
-  }
-
-  // 3. Simple Hash-based Data pattern for visual encoding
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    hash = (hash << 5) - hash + text.charCodeAt(i);
-    hash |= 0;
-  }
-
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      // Avoid overwriting finder patterns
-      const inTopLeft = r < 8 && c < 8;
-      const inTopRight = r < 8 && c >= size - 8;
-      const inBottomLeft = r >= size - 8 && c < 8;
-
-      if (!inTopLeft && !inTopRight && !inBottomLeft) {
-        const val = Math.abs(Math.sin((r * size + c + hash) * 1.5));
-        matrix[r]![c] = val > 0.48;
-      }
-    }
-  }
-
-  return matrix;
-}
-
 export function QRCodeView({
   value,
-  size = 220,
+  size = 240,
   fgColor = "#0f172a",
   bgColor = "#ffffff",
   title = "Form QR Code",
 }: QRCodeGeneratorProps) {
-  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [dataUrl, setDataUrl] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [copied, setCopied] = useState<boolean>(false);
 
-  const matrix = generateQRMatrix(value);
-  const matrixSize = matrix.length;
-  const cellSize = size / matrixSize;
+  useEffect(() => {
+    let isMounted = true;
+    async function generateQR() {
+      try {
+        setLoading(true);
+        // Generate high-resolution Data URL (PNG) with Error Correction Level H
+        const url = await QRCode.toDataURL(value, {
+          width: size * 3, // High DPI resolution for crisp printing & camera scanning
+          margin: 1.5,
+          color: {
+            dark: fgColor,
+            light: bgColor,
+          },
+          errorCorrectionLevel: "H", // High error correction level for 100% reliable camera scanning
+        });
+
+        if (isMounted) {
+          setDataUrl(url);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("QR Code generation error", err);
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    if (value) {
+      generateQR();
+    }
+  }, [value, size, fgColor, bgColor]);
 
   const downloadPNG = () => {
-    if (!svgRef.current) return;
-    const svgData = new XMLSerializer().serializeToString(svgRef.current);
-    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const URL = window.URL || window.webkitURL || window;
-    const blobURL = URL.createObjectURL(svgBlob);
+    if (!dataUrl) return;
+    const downloadLink = document.createElement("a");
+    downloadLink.href = dataUrl;
+    downloadLink.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-qr.png`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    toast.success("High-resolution QR Code downloaded!");
+  };
 
-    const image = new Image();
-    image.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = size * 2; // High resolution
-      canvas.height = size * 2;
-      const context = canvas.getContext("2d");
-      if (context) {
-        context.fillStyle = bgColor;
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        const png = canvas.toDataURL("image/png");
-        const downloadLink = document.createElement("a");
-        downloadLink.href = png;
-        downloadLink.download = `${title.toLowerCase().replace(/\s+/g, "-")}-qr.png`;
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        document.body.removeChild(downloadLink);
-        toast.success("QR Code image downloaded successfully!");
-      }
-    };
-    image.src = blobURL;
+  const copyImageToClipboard = async () => {
+    if (!dataUrl) return;
+    try {
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          [blob.type]: blob,
+        }),
+      ]);
+      setCopied(true);
+      toast.success("QR Code image copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.info("Image copy not supported in browser. Use download instead!");
+    }
   };
 
   return (
-    <div className="flex flex-col items-center gap-4 rounded-xl border bg-card p-5 text-card-foreground shadow-sm">
-      <div className="relative rounded-lg p-3 shadow-inner" style={{ backgroundColor: bgColor }}>
-        <svg
-          ref={svgRef}
-          width={size}
-          height={size}
-          viewBox={`0 0 ${size} ${size}`}
-          className="rounded-md"
-        >
-          <rect width={size} height={size} fill={bgColor} />
-          {matrix.map((row, r) =>
-            row.map((cell, c) =>
-              cell ? (
-                <rect
-                  key={`${r}-${c}`}
-                  x={c * cellSize}
-                  y={r * cellSize}
-                  width={cellSize + 0.3}
-                  height={cellSize + 0.3}
-                  fill={fgColor}
-                  rx={0.5}
-                />
-              ) : null,
-            ),
-          )}
-        </svg>
+    <div className="flex flex-col items-center gap-4 rounded-2xl border bg-card p-5 text-card-foreground shadow-sm">
+      {/* QR Code Container */}
+      <div
+        className="relative rounded-xl p-3 shadow-inner flex items-center justify-center border transition-transform hover:scale-[1.02]"
+        style={{ backgroundColor: bgColor }}
+      >
+        {loading ? (
+          <div
+            className="flex items-center justify-center animate-pulse text-xs text-muted-foreground font-mono"
+            style={{ width: size, height: size }}
+          >
+            Generating QR...
+          </div>
+        ) : (
+          <img
+            src={dataUrl}
+            alt={title}
+            width={size}
+            height={size}
+            className="rounded-lg object-contain shadow-xs"
+          />
+        )}
       </div>
 
-      <div className="flex w-full items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <QrCode className="size-4 text-primary" />
-          <span>Scan to open form</span>
+      <div className="flex w-full items-center justify-between gap-2 pt-1">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+          <QrCode className="size-4 text-primary shrink-0" />
+          <span>Point camera to scan form</span>
         </div>
-        <Button variant="outline" size="sm" onClick={downloadPNG} className="gap-1.5 text-xs">
-          <Download className="size-3.5" /> Download PNG
-        </Button>
+
+        <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={copyImageToClipboard}
+            disabled={loading || !dataUrl}
+            className="h-8 text-xs gap-1"
+            title="Copy QR Image to Clipboard"
+          >
+            {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+            <span>{copied ? "Copied!" : "Copy"}</span>
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={downloadPNG}
+            disabled={loading || !dataUrl}
+            className="h-8 text-xs gap-1.5 font-semibold"
+          >
+            <Download className="size-3.5" />
+            <span>Download PNG</span>
+          </Button>
+        </div>
       </div>
     </div>
   );

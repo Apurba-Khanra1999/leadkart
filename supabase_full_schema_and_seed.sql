@@ -1852,6 +1852,7 @@ CREATE TABLE IF NOT EXISTS public.forms (
   redirect_url text,
   is_active boolean NOT NULL DEFAULT true,
   accent_color text NOT NULL DEFAULT '#2563eb',
+  default_theme text NOT NULL DEFAULT 'light',
   auto_create_lead boolean NOT NULL DEFAULT true,
   default_lead_source_id uuid REFERENCES public.lead_sources(id) ON DELETE SET NULL,
   default_deal_stage_id uuid REFERENCES public.deal_stages(id) ON DELETE SET NULL,

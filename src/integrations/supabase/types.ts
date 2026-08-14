@@ -663,6 +663,7 @@ export type Database = {
           default_assigned_to: string | null
           default_deal_stage_id: string | null
           default_lead_source_id: string | null
+          default_theme: string
           description: string | null
           id: string
           is_active: boolean
@@ -683,6 +684,7 @@ export type Database = {
           default_assigned_to?: string | null
           default_deal_stage_id?: string | null
           default_lead_source_id?: string | null
+          default_theme?: string
           description?: string | null
           id?: string
           is_active?: boolean
@@ -703,6 +705,7 @@ export type Database = {
           default_assigned_to?: string | null
           default_deal_stage_id?: string | null
           default_lead_source_id?: string | null
+          default_theme?: string
           description?: string | null
           id?: string
           is_active?: boolean
