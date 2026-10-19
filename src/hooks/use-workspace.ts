@@ -93,6 +93,9 @@ export function useWorkspace() {
       if (!member) {
         const userName =
           (auth.user.user_metadata as any)?.full_name ||
+          (auth.user.user_metadata as any)?.displayName ||
+          (auth.user.user_metadata as any)?.name ||
+          (auth.user as any)?.name ||
           (auth.user.email ? auth.user.email.split("@")[0] : "New User");
         const orgName = `${userName}'s Workspace`;
 
