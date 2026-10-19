@@ -70,11 +70,11 @@ export const Route = createFileRoute("/_authenticated/follow-ups")({
       },
       { property: "og:title", content: "Sales Tasks & Follow-Up Automation — LeadKart CRM" },
       { property: "og:description", content: "Never miss a customer touchpoint or sales task." },
-      { property: "og:url", content: "https://leadkart.lovable.app/follow-ups" },
+      { property: "og:url", content: "https://leadkartpro.vercel.app/follow-ups" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Sales Follow-Ups & Reminders — LeadKart CRM" },
     ],
-    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/follow-ups" }],
+    links: [{ rel: "canonical", href: "https://leadkartpro.vercel.app/follow-ups" }],
   }),
   component: FollowUpsPage,
 });

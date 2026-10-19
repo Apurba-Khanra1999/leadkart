@@ -1,29 +1,44 @@
-# LeadKart CRM — Multi-Tenant B2B Sales Platform
+# LeadKart CRM (LeadFlow Pro) — Multi-Tenant B2B Sales & Revenue Suite
 
-> LeadKart CRM (Zenith CRM) is an enterprise-grade multi-tenant B2B Sales CRM and pipeline automation suite designed for growing sales teams, agencies, and revenue operations.
+> LeadKart CRM is an enterprise-grade multi-tenant B2B Sales Management and Revenue Operations Platform. It powers end-to-end sales cycles: from instant public QR lead capture forms to weighted Postgres Kanban pipelines, automated Google Meet follow-ups, itemized CPQ quotations, and automated invoice balance reconciliations.
 
-## Key Capabilities
-- **Lead Capture & Management**: Qualify, score, tag, and assign incoming leads across custom stages and sources.
-- **Visual Sales Pipeline**: Real-time Kanban board with database-calculated weighted deal values and probability forecasts.
-- **Follow-Up Automation**: Task management for sales calls, emails, demos, and meetings with overdue alerts and automated activity feeds.
-- **Quotations & Invoicing**: Integrated quotation builder, itemized line items, automatic tax/discount formulas, conversion to invoices, and balance tracking.
-- **Product Catalog Management**: Products and service inventory with SKUs, category tags, and line-item linking.
-- **Multi-Tenant Security & RBAC**: Strict Row Level Security (RLS) in PostgreSQL isolating tenant data across organizations, with granular roles (Owner, Admin, Sales Manager, Executive).
+## System Architecture & Security
+- **Frontend Stack**: TanStack Start (Nitro SSR), TanStack Router, React 19, Tailwind CSS v4 (OKLCH color system), Radix UI primitives.
+- **Database Engine**: Neon Serverless PostgreSQL with PostgreSQL Row-Level Security (RLS) strictly enforced across all tenant tables.
+- **Data Isolation**: Multi-tenant isolation at the database layer ensuring zero cross-tenant query leaks.
+- **Role-Based Access Control (RBAC)**: 5 granular roles: Owner, Admin, Sales Manager, Sales Executive, Accountant, mapped to 38+ system permissions.
+- **Data Sync**: TanStack Query v5 with optimistic UI updates and real-time cache invalidation.
 
-## Primary Routes & Applications
-- [Landing Page](https://leadkart.lovable.app/): Product summary and workspace access.
-- [Authentication & Demo](https://leadkart.lovable.app/auth): Secure login, team signup, and instant seeded sandbox workspace access.
-- [Sales Dashboard](https://leadkart.lovable.app/dashboard): Live revenue metrics, open leads, weighted pipeline, and activities timeline.
-- [Leads Directory](https://leadkart.lovable.app/leads): Interactive lead management with drawer activity feeds.
-- [Kanban Pipeline](https://leadkart.lovable.app/pipeline): Drag-and-drop opportunity pipeline management.
-- [Task & Follow-Ups](https://leadkart.lovable.app/follow-ups): Sales tasks and schedule calendar.
-- [Quotations Generator](https://leadkart.lovable.app/quotations): B2B quotation builder.
-- [Invoices & Payments](https://leadkart.lovable.app/invoices): Billing tracking and payment reconciliation.
+## Core Functional Modules
+1. **Lead Capture & Public Form Builder (`/forms` & `/f/:slug`)**:
+   - Dynamic form builder with custom input fields (Name, Email, Phone, Company, Budget, Industry, Project Details).
+   - Instant printable high-res QR code generator and shareable public URLs.
+   - Submissions automatically ingest into tenant lead queues with auto-assignment.
 
-## Technical Architecture
-- **Frontend**: TanStack Start, TanStack Router, React 19, Tailwind CSS v4, Radix UI primitives.
-- **Backend & Database**: Supabase PostgreSQL with strict RLS policies and server-side RPC functions.
-- **State & Data Sync**: TanStack Query v5 with optimistic UI updates and real-time invalidation.
+2. **Sales Pipeline & Deal Forecasting (`/pipeline`)**:
+   - Visual Kanban board with stage progression (Discovery, Demo Scheduled, Proposal Sent, Negotiation, Closed Won).
+   - Real-time probability multipliers calculated directly in PostgreSQL for accurate weighted revenue forecasts.
 
-## Optional Documentation
-- [Full LLM Specification](https://leadkart.lovable.app/llms-full.txt): Comprehensive API models, DB schemas, and workspace configuration guide.
+3. **Follow-Up Automation & Meeting Detection (`/follow-ups` & `/demos`)**:
+   - Task management for calls, emails, and presentations with overdue alerts.
+   - Regex-based automated parsing of Google Meet, Zoom, and Microsoft Teams meeting URLs.
+   - Demo outcomes logging and timeline integration.
+
+4. **Product Catalog & CPQ Quotations (`/products` & `/quotations`)**:
+   - Reusable inventory of items and services with SKUs, category tags, and unit pricing.
+   - Itemized quotation builder supporting line discounts, GST/tax calculations, terms, and printable PDF previews.
+
+5. **Invoices & Payment Reconciliation (`/invoices`)**:
+   - 1-click conversion from approved quotations into milestone or full invoices.
+   - Partial payment recording with remaining balance formulas and automated status transitions (Draft, Sent, Paid, Overdue).
+
+6. **Executive Dashboard (`/dashboard`)**:
+   - Live revenue metrics, won deal volumes, active pipeline, qualified lead counters, and unified activity feed.
+
+## Public Endpoints
+- [Home & Platform Overview](https://leadkartpro.vercel.app/)
+- [Authentication & Demo Sandbox](https://leadkartpro.vercel.app/auth)
+- [Public Lead Forms](https://leadkartpro.vercel.app/f/:slug)
+- [Sitemap Index](https://leadkartpro.vercel.app/sitemap.xml)
+- [Robots Configuration](https://leadkartpro.vercel.app/robots.txt)
+- [Full LLM Specification](https://leadkartpro.vercel.app/llms-full.txt)

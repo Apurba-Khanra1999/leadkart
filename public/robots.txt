@@ -1,24 +1,46 @@
-# Robots.txt for LeadKart CRM / Zenith CRM
-# Allows search engine crawlers and AI agents to index public marketing pages & metadata.
+# Robots.txt for LeadKart CRM (LeadFlow Pro)
+# Comprehensive SEO & AI Crawlers configuration for maximum indexing and discovery.
 
 User-agent: Googlebot
 Allow: /
 Allow: /auth
+Allow: /f/
 Allow: /sitemap.xml
 Allow: /llms.txt
 Allow: /llms-full.txt
+Allow: /site.webmanifest
 Disallow: /api/
+Disallow: /_authenticated/
+
+User-agent: Googlebot-Image
+Allow: /
+Allow: /favicon.svg
+Allow: /favicon.ico
 
 User-agent: Bingbot
 Allow: /
+Allow: /auth
+Allow: /f/
+Allow: /sitemap.xml
+Disallow: /api/
+Disallow: /_authenticated/
+
+User-agent: Applebot
+Allow: /
+Allow: /auth
+Allow: /f/
 Disallow: /api/
 
-User-agent: Twitterbot
+User-agent: DuckDuckBot
 Allow: /
+Allow: /auth
+Allow: /f/
 
-User-agent: facebookexternalhit
+User-agent: YandexBot
 Allow: /
+Allow: /auth
 
+# AI Search & Large Language Model Crawlers
 User-agent: GPTBot
 Allow: /
 Allow: /llms.txt
@@ -34,12 +56,34 @@ Allow: /
 Allow: /llms.txt
 Allow: /llms-full.txt
 
-User-agent: Applebot
+User-agent: Google-Extended
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: anthropic-ai
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: LinkedInBot
 Allow: /
 
 User-agent: *
 Allow: /
+Allow: /auth
+Allow: /f/
 Disallow: /api/
+Disallow: /_authenticated/
 
-# Sitemap Location
-Sitemap: https://leadkart.lovable.app/sitemap.xml
+# Primary Sitemap Index
+Sitemap: https://leadkartpro.vercel.app/sitemap.xml

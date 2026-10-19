@@ -79,11 +79,11 @@ export const Route = createFileRoute("/_authenticated/products")({
         content: "Collections and price list of every service and product your team sells.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://leadkart.lovable.app/products" },
+      { property: "og:url", content: "https://leadkartpro.vercel.app/products" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Product Inventory — LeadKart CRM" },
     ],
-    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/products" }],
+    links: [{ rel: "canonical", href: "https://leadkartpro.vercel.app/products" }],
   }),
   component: ProductsPage,
 });

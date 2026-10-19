@@ -48,11 +48,11 @@ export const Route = createFileRoute("/_authenticated/pipeline")({
       },
       { property: "og:title", content: "Kanban Deal Pipeline & Revenue Forecast — LeadKart CRM" },
       { property: "og:description", content: "Stage-by-stage weighted sales pipeline and deal forecasting." },
-      { property: "og:url", content: "https://leadkart.lovable.app/pipeline" },
+      { property: "og:url", content: "https://leadkartpro.vercel.app/pipeline" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Deal Pipeline & Forecasting — LeadKart CRM" },
     ],
-    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/pipeline" }],
+    links: [{ rel: "canonical", href: "https://leadkartpro.vercel.app/pipeline" }],
   }),
   component: PipelinePage,
 });

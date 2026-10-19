@@ -67,11 +67,11 @@ export const Route = createFileRoute("/_authenticated/demos")({
       },
       { property: "og:title", content: "Product Demos & Google Meet Links — LeadKart CRM" },
       { property: "og:description", content: "Schedule and launch Google Meet product demos directly from your CRM." },
-      { property: "og:url", content: "https://leadkart.lovable.app/demos" },
+      { property: "og:url", content: "https://leadkartpro.vercel.app/demos" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Product Demos & Meet Links — LeadKart CRM" },
     ],
-    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/demos" }],
+    links: [{ rel: "canonical", href: "https://leadkartpro.vercel.app/demos" }],
   }),
   component: DemosPage,
 });

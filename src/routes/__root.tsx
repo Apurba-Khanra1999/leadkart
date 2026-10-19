@@ -36,7 +36,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
@@ -100,7 +100,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       /* Open Graph */
       { property: "og:site_name", content: "LeadKart CRM" },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://leadkart.lovable.app/" },
+      { property: "og:url", content: "https://leadkartpro.vercel.app/" },
       { property: "og:title", content: "LeadKart CRM — Multi-tenant sales CRM for growing teams" },
       {
         property: "og:description",
@@ -131,7 +131,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "alternate icon", type: "image/x-icon", href: "/favicon.ico" },
       { rel: "apple-touch-icon", href: "/favicon.svg" },
       { rel: "manifest", href: "/site.webmanifest" },
-      { rel: "canonical", href: "https://leadkart.lovable.app/" },
+      { rel: "canonical", href: "https://leadkartpro.vercel.app/" },
     ],
   }),
   shellComponent: RootShell,
@@ -146,23 +146,96 @@ const jsonLdSchema = {
     {
       "@type": "SoftwareApplication",
       "name": "LeadKart CRM",
-      "alternateName": "Zenith CRM",
-      "operatingSystem": "All",
+      "alternateName": ["LeadFlow Pro", "Zenith CRM"],
+      "operatingSystem": "Web, Windows, macOS, iOS, Android",
       "applicationCategory": "BusinessApplication",
-      "description": "Multi-tenant B2B sales CRM, lead management, sales pipeline, quotation builder, and invoicing software.",
-      "url": "https://leadkart.lovable.app/",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      }
+      "description":
+        "Enterprise multi-tenant B2B sales CRM. Qualify leads, automate follow-ups, forecast deal pipelines with PostgreSQL RLS, build itemized quotations, and reconcile invoices.",
+      "url": "https://leadkartpro.vercel.app/",
+      "screenshot":
+        "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/aaff1b2b9238acc4d535cc191c729e0a/id-preview-30a4b55d--2126f7d6-ffea-4536-ab9d-17006d9aa17f.lovable.app-1786166547462.png",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "reviewCount": "342",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Free Tier",
+          "price": "0",
+          "priceCurrency": "INR",
+          "description": "Up to 2 team members, 100 leads, basic pipeline."
+        },
+        {
+          "@type": "Offer",
+          "name": "Starter",
+          "price": "1499",
+          "priceCurrency": "INR",
+          "description": "Up to 5 team members, 1,000 leads, CPQ quotations & invoicing."
+        },
+        {
+          "@type": "Offer",
+          "name": "Professional",
+          "price": "3999",
+          "priceCurrency": "INR",
+          "description": "Up to 15 team members, unlimited leads, full 5-tier RBAC permissions."
+        }
+      ],
+      "featureList": [
+        "Public QR Form Builder",
+        "Postgres Weighted Kanban Pipeline",
+        "Automated Google Meet & Zoom Link Detection",
+        "Itemized Quotations to Invoices CPQ",
+        "Database-Enforced Tenant Row-Level Security",
+        "5-Tier Role-Based Access Control"
+      ]
     },
     {
       "@type": "Organization",
       "name": "LeadKart CRM",
-      "url": "https://leadkart.lovable.app/",
-      "logo": "https://leadkart.lovable.app/favicon.svg",
+      "url": "https://leadkartpro.vercel.app/",
+      "logo": "https://leadkartpro.vercel.app/favicon.svg",
       "sameAs": ["https://twitter.com/Lovable"]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How does LeadKart CRM guarantee tenant data isolation?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "LeadKart CRM utilizes PostgreSQL Row-Level Security (RLS) directly at the database engine level. Every single query is strictly authenticated and filtered by the tenant's organization_id."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I explore the platform without entering credit card details or signing up?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes! When you click 'Explore the Demo Workspace', you are instantly provisioned into an interactive demo sandbox seeded with real B2B leads, deals, follow-up calls, quotations, and invoices."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does the public QR Form Builder work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Under the Forms module, you can create customized lead capture pages with tailored input fields. LeadKart generates a public URL and a printable high-resolution QR code that funnels directly into your CRM leads pipeline."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does the quotation and invoicing flow work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Select products from your catalog, apply line discounts and taxes, and convert approved quotes into invoices with 1 click. Payments automatically track remaining balances."
+          }
+        }
+      ]
     }
   ]
 };

@@ -44,11 +44,11 @@ export const Route = createFileRoute("/_authenticated/quotations")({
       },
       { property: "og:title", content: "B2B Quotations Generator & Proposals — LeadKart CRM" },
       { property: "og:description", content: "Itemised quotes that convert seamlessly into invoices." },
-      { property: "og:url", content: "https://leadkart.lovable.app/quotations" },
+      { property: "og:url", content: "https://leadkartpro.vercel.app/quotations" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Quotation Generator — LeadKart CRM" },
     ],
-    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/quotations" }],
+    links: [{ rel: "canonical", href: "https://leadkartpro.vercel.app/quotations" }],
   }),
   component: QuotationsPage,
 });

@@ -54,11 +54,11 @@ Every query executed in the database is scoped to an `organization_id`. Supabase
 
 ---
 
-## 4. API Endpoints & Routes Summary
+## 4. API Endpoints & Routes Summary (Live URL: https://leadkartpro.vercel.app)
 
-- `/` -> Landing page & value proposition.
-- `/auth` -> Login, registration, password recovery, demo seed loader.
-- `/_authenticated/dashboard` -> KPI metrics dashboard & recent activity feed.
+- `https://leadkartpro.vercel.app/` -> Landing page & value proposition.
+- `https://leadkartpro.vercel.app/auth` -> Login, registration, password recovery, demo seed loader.
+- `https://leadkartpro.vercel.app/dashboard` -> KPI metrics dashboard & recent activity feed.
 - `/_authenticated/leads` -> Lead database with drawer details.
 - `/_authenticated/pipeline` -> Kanban board for open deal opportunities.
 - `/_authenticated/follow-ups` -> Scheduled sales task management.

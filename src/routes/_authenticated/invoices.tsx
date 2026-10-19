@@ -47,11 +47,11 @@ export const Route = createFileRoute("/_authenticated/invoices")({
         property: "og:description",
         content: "Invoice balances and overdue status update automatically as payments land.",
       },
-      { property: "og:url", content: "https://leadkart.lovable.app/invoices" },
+      { property: "og:url", content: "https://leadkartpro.vercel.app/invoices" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Invoicing & Payments — LeadKart CRM" },
     ],
-    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/invoices" }],
+    links: [{ rel: "canonical", href: "https://leadkartpro.vercel.app/invoices" }],
   }),
   component: InvoicesPage,
 });

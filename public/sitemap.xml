@@ -4,81 +4,57 @@
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   <url>
-    <loc>https://leadkart.lovable.app/</loc>
-    <lastmod>2026-08-09</lastmod>
+    <loc>https://leadkartpro.vercel.app/</loc>
+    <lastmod>2026-10-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.00</priority>
   </url>
   <url>
-    <loc>https://leadkart.lovable.app/auth</loc>
-    <lastmod>2026-08-09</lastmod>
+    <loc>https://leadkartpro.vercel.app/auth</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://leadkartpro.vercel.app/#features</loc>
+    <lastmod>2026-10-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
   </url>
   <url>
-    <loc>https://leadkart.lovable.app/dashboard</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>always</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://leadkart.lovable.app/leads</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>always</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://leadkart.lovable.app/pipeline</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>always</changefreq>
-    <priority>0.80</priority>
-  </url>
-  <url>
-    <loc>https://leadkart.lovable.app/follow-ups</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>always</changefreq>
-    <priority>0.80</priority>
-  </url>
-  <url>
-    <loc>https://leadkart.lovable.app/demos</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>always</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://leadkart.lovable.app/clients</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://leadkart.lovable.app/products</loc>
-    <lastmod>2026-08-09</lastmod>
+    <loc>https://leadkartpro.vercel.app/#interactive-preview</loc>
+    <lastmod>2026-10-19</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.70</priority>
+    <priority>0.90</priority>
   </url>
   <url>
-    <loc>https://leadkart.lovable.app/quotations</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.75</priority>
+    <loc>https://leadkartpro.vercel.app/#use-cases</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://leadkart.lovable.app/invoices</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.75</priority>
+    <loc>https://leadkartpro.vercel.app/#calculator</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://leadkart.lovable.app/team</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.60</priority>
+    <loc>https://leadkartpro.vercel.app/#growth-charts</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://leadkart.lovable.app/settings</loc>
-    <lastmod>2026-08-09</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.50</priority>
+    <loc>https://leadkartpro.vercel.app/#pricing</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://leadkartpro.vercel.app/#faq</loc>
+    <lastmod>2026-10-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
   </url>
 </urlset>

@@ -1169,7 +1169,7 @@ function FormsPage() {
   const totalSubmissions = forms.reduce((acc, f) => acc + (f.submission_count || 0), 0);
 
   const getPublicUrl = (slugName: string) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://leadkart.lovable.app";
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://leadkartpro.vercel.app";
     return `${origin}/f/${slugName}`;
   };
 

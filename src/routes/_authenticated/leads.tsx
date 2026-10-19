@@ -89,11 +89,11 @@ export const Route = createFileRoute("/_authenticated/leads")({
         property: "og:description",
         content: "Filter, qualify, convert and follow up on every sales lead in your organization.",
       },
-      { property: "og:url", content: "https://leadkart.lovable.app/leads" },
+      { property: "og:url", content: "https://leadkartpro.vercel.app/leads" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Lead Management — LeadKart CRM" },
     ],
-    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/leads" }],
+    links: [{ rel: "canonical", href: "https://leadkartpro.vercel.app/leads" }],
   }),
   component: LeadsPage,
 });

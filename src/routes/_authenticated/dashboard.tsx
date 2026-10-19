@@ -38,6 +38,11 @@ import {
   Filter,
   Flame,
   Check,
+  CheckCheck,
+  Search,
+  Globe,
+  Share2,
+  RefreshCw,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -77,6 +82,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { formatMoney, formatDateTime, relativeDay } from "@/lib/crm";
+import { cn } from "@/lib/utils";
 
 const LOCAL_FORMS_KEY = "leadflow_local_forms_v1";
 const LOCAL_SUBMISSIONS_KEY = "leadflow_local_submissions_v1";
@@ -84,19 +90,19 @@ const LOCAL_SUBMISSIONS_KEY = "leadflow_local_submissions_v1";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Sales Dashboard & Live KPIs — LeadKart CRM" },
+      { title: "Sales Command Dashboard & Live KPIs — LeadKart CRM" },
       {
         name: "description",
         content:
-          "Real-time sales dashboard: monitor open leads, weighted pipeline forecasts, follow-ups due today, and outstanding invoice balances.",
+          "Executive real-time sales dashboard: monitor open leads, pipeline velocity, won revenue, overdue follow-ups, and invoice collections.",
       },
-      { property: "og:title", content: "Sales Dashboard & Live KPIs — LeadKart CRM" },
-      { property: "og:description", content: "Live sales KPIs, weighted pipeline, and activity feeds for your organisation." },
-      { property: "og:url", content: "https://leadkart.lovable.app/dashboard" },
+      { property: "og:title", content: "Sales Command Dashboard & Live KPIs — LeadKart CRM" },
+      { property: "og:description", content: "Executive real-time sales dashboard: monitor open leads, pipeline velocity, won revenue, and live activity feeds." },
+      { property: "og:url", content: "https://leadkartpro.vercel.app/dashboard" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Sales Dashboard — LeadKart CRM" },
     ],
-    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/dashboard" }],
+    links: [{ rel: "canonical", href: "https://leadkartpro.vercel.app/dashboard" }],
   }),
   component: DashboardPage,
 });
@@ -123,7 +129,30 @@ function DashboardPage() {
   const [leadPhone, setLeadPhone] = useState("");
   const [leadCompany, setLeadCompany] = useState("");
   const [leadEstimatedValue, setLeadEstimatedValue] = useState("");
-  const [leadIndustry, setLeadIndustry] = useState("");
+  const [leadSourceId, setLeadSourceId] = useState("");
+  const [leadAssignedMemberId, setLeadAssignedMemberId] = useState("");
+
+  // Metadata queries for quick modal dropdowns
+  const sourcesQuery = useQuery({
+    queryKey: ["lead-sources", orgId],
+    enabled: Boolean(orgId),
+    queryFn: async () => {
+      const { data } = await supabase.from("lead_sources").select("id, name").order("name");
+      return data ?? [];
+    },
+  });
+
+  const membersQuery = useQuery({
+    queryKey: ["team-members-list", orgId],
+    enabled: Boolean(orgId),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("organization_members")
+        .select("id, full_name, email, role")
+        .order("full_name");
+      return data ?? [];
+    },
+  });
 
   const stats = useQuery({
     queryKey: ["dashboard", orgId, timeRange],
@@ -131,6 +160,17 @@ function DashboardPage() {
     queryFn: async () => {
       const today = new Date();
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+      // Date cutoff filter based on selected range
+      const now = Date.now();
+      const cutoff =
+        timeRange === "month"
+          ? new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString()
+          : timeRange === "quarter"
+          ? new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString()
+          : timeRange === "year"
+          ? new Date(now - 365 * 24 * 60 * 60 * 1000).toISOString()
+          : null;
 
       const [leads, deals, followups, invoices, formsRes, membersRes] = await Promise.all([
         supabase
@@ -143,7 +183,7 @@ function DashboardPage() {
           .is("deleted_at", null),
         supabase
           .from("follow_ups")
-          .select("id, subject, type, due_at, status, priority, leads(first_name, last_name)")
+          .select("id, subject, type, due_at, status, priority, lead_id, leads(id, first_name, last_name, company, phone, email)")
           .neq("status", "completed")
           .lte("due_at", endOfDay.toISOString())
           .order("due_at", { ascending: true })
@@ -153,8 +193,13 @@ function DashboardPage() {
         supabase.from("organization_members").select("id, full_name, email, role"),
       ]);
 
-      const openDeals = (deals.data ?? []).filter((d) => d.status === "open");
-      const won = (deals.data ?? []).filter((d) => d.status === "won");
+      const allDeals = deals.data ?? [];
+      const filteredDeals = cutoff
+        ? allDeals.filter((d) => !d.created_at || d.created_at >= cutoff)
+        : allDeals;
+
+      const openDeals = allDeals.filter((d) => d.status === "open");
+      const wonDeals = filteredDeals.filter((d) => d.status === "won");
 
       // Group deals by stage
       const byStage = new Map<string, { name: string; count: number; value: number }>();
@@ -167,8 +212,13 @@ function DashboardPage() {
       }
 
       // Group leads by Lead Source
+      const allLeads = leads.data ?? [];
+      const filteredLeads = cutoff
+        ? allLeads.filter((l) => !l.created_at || l.created_at >= cutoff)
+        : allLeads;
+
       const bySource = new Map<string, number>();
-      (leads.data ?? []).forEach((l) => {
+      filteredLeads.forEach((l) => {
         const srcName = (l.lead_sources as unknown as { name: string } | null)?.name ?? "Direct / Manual";
         bySource.set(srcName, (bySource.get(srcName) || 0) + 1);
       });
@@ -180,19 +230,21 @@ function DashboardPage() {
 
       // Team Performance Leaderboard
       const members = membersRes.data ?? [];
-      const teamPerformance = members.map((m) => {
-        const mLeads = (leads.data ?? []).filter((l) => l.assigned_member_id === m.id).length;
-        const mDealsWon = won.filter((d) => d.assigned_member_id === m.id);
-        const mWonVal = mDealsWon.reduce((sum, d) => sum + Number(d.value ?? 0), 0);
-        return {
-          id: m.id,
-          name: m.full_name,
-          role: m.role,
-          leadCount: mLeads,
-          wonCount: mDealsWon.length,
-          wonValue: mWonVal,
-        };
-      }).sort((a, b) => b.wonValue - a.wonValue);
+      const teamPerformance = members
+        .map((m) => {
+          const mLeads = allLeads.filter((l) => l.assigned_member_id === m.id).length;
+          const mDealsWon = wonDeals.filter((d) => d.assigned_member_id === m.id);
+          const mWonVal = mDealsWon.reduce((sum, d) => sum + Number(d.value ?? 0), 0);
+          return {
+            id: m.id,
+            name: m.full_name,
+            role: m.role,
+            leadCount: mLeads,
+            wonCount: mDealsWon.length,
+            wonValue: mWonVal,
+          };
+        })
+        .sort((a, b) => b.wonValue - a.wonValue);
 
       // Monthly Revenue Trend Data (Past 6 Months)
       const monthlyTrendMap = new Map<string, { month: string; won: number; pipeline: number }>();
@@ -204,7 +256,7 @@ function DashboardPage() {
         monthlyTrendMap.set(key, { month: key, won: 0, pipeline: 0 });
       }
 
-      (deals.data ?? []).forEach((d) => {
+      allDeals.forEach((d) => {
         if (!d.created_at) return;
         const dt = new Date(d.created_at);
         const key = `${monthNames[dt.getMonth()]} ${dt.getFullYear().toString().slice(2)}`;
@@ -239,18 +291,20 @@ function DashboardPage() {
       const dbSubsCount = dbForms.reduce((acc, f) => acc + (f.submission_count || 0), 0);
       const totalSubmissionsCount = Math.max(dbSubsCount, localSubs.length);
 
-      const closedDeals = deals.data ? deals.data.filter((d) => d.status !== "open") : [];
-      const winRateCalc = closedDeals.length > 0 ? Math.round((won.length / closedDeals.length) * 100) : 0;
+      const closedDeals = filteredDeals.filter((d) => d.status !== "open");
+      const winRateCalc =
+        closedDeals.length > 0 ? Math.round((wonDeals.length / closedDeals.length) * 100) : 0;
       const pipelineSum = openDeals.reduce((s, d) => s + Number(d.value ?? 0), 0);
       const avgDealVal = openDeals.length > 0 ? Math.round(pipelineSum / openDeals.length) : 0;
 
       return {
-        leadCount: leads.data?.length ?? 0,
-        leadValue: (leads.data ?? []).reduce((s, l) => s + Number(l.estimated_value ?? 0), 0),
+        leadCount: filteredLeads.length,
+        leadValue: filteredLeads.reduce((s, l) => s + Number(l.estimated_value ?? 0), 0),
         openDealCount: openDeals.length,
         pipelineValue: pipelineSum,
         weighted: openDeals.reduce((s, d) => s + Number(d.weighted_value ?? 0), 0),
-        wonValue: won.reduce((s, d) => s + Number(d.value ?? 0), 0),
+        wonValue: wonDeals.reduce((s, d) => s + Number(d.value ?? 0), 0),
+        wonCount: wonDeals.length,
         winRate: winRateCalc,
         avgDealValue: avgDealVal,
         dueFollowUps: followups.data ?? [],
@@ -281,6 +335,25 @@ function DashboardPage() {
     },
   });
 
+  // Quick 1-Click Complete Follow-up Mutation
+  const completeFollowUpMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("follow_ups")
+        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Follow-up marked completed");
+      queryClient.invalidateQueries({ queryKey: ["dashboard", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["follow-ups", orgId] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to update follow-up");
+    },
+  });
+
   // Create Quick Lead Mutation
   const createQuickLeadMutation = useMutation({
     mutationFn: async () => {
@@ -298,8 +371,9 @@ function DashboardPage() {
           email: leadEmail.trim() || null,
           phone: leadPhone.trim() || null,
           company: leadCompany.trim() || null,
-          industry: leadIndustry.trim() || null,
           estimated_value: numVal,
+          source_id: leadSourceId || null,
+          assigned_member_id: leadAssignedMemberId || null,
         })
         .select()
         .single();
@@ -318,7 +392,8 @@ function DashboardPage() {
       setLeadPhone("");
       setLeadCompany("");
       setLeadEstimatedValue("");
-      setLeadIndustry("");
+      setLeadSourceId("");
+      setLeadAssignedMemberId("");
     },
     onError: (err: any) => {
       toast.error(err.message || "Failed to create lead");
@@ -337,144 +412,221 @@ function DashboardPage() {
   }));
 
   return (
-    <div className="space-y-6">
-      {/* HERO WELCOME HEADER & QUICK ACTIONS */}
-      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-r from-primary/10 via-purple-500/10 to-emerald-500/10 p-6 sm:p-8 shadow-sm">
+    <div className="space-y-6 pb-8">
+      {/* COMMAND CENTER HEADER WITH AMBIENT GLOW & QUICK ACTION CONTROLS */}
+      <div className="relative overflow-hidden rounded-2xl border bg-card p-6 sm:p-7 shadow-xs">
+        {/* Subtle decorative mesh gradients */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-16 w-60 h-60 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="gap-1.5 bg-background/80 backdrop-blur-xs text-xs font-semibold px-2.5 py-0.5 border shadow-2xs">
-                <Sparkles className="size-3.5 text-amber-500" />
-                <span>Live Sales Command Center</span>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="relative flex size-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full size-2 bg-emerald-500"></span>
+                </span>
+                Live Engine Active
+              </span>
+
+              <Badge variant="outline" className="text-[11px] text-muted-foreground bg-background/60">
+                {new Date().toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
               </Badge>
-              <Badge variant="outline" className="text-xs text-muted-foreground bg-background/50">
-                {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-              </Badge>
-              <Badge variant="outline" className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
-                <ShieldCheck className="size-3 mr-1" /> Health: 98% Optimal
-              </Badge>
+
+              {ws?.isDemo && (
+                <Badge variant="secondary" className="text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
+                  <Sparkles className="size-3 mr-1" /> Instant Demo Sandbox
+                </Badge>
+              )}
             </div>
+
             <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
               {greeting}, {firstName}! 👋
             </h1>
+
             <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
-              Real-time sales revenue, forecast analytics, follow-ups, and intake feeds for <span className="font-semibold text-foreground">{ws?.orgName ?? "your workspace"}</span>.
+              Sales pipeline, weighted forecasts, overdue follow-ups, and intake feeds for{" "}
+              <span className="font-semibold text-foreground">{ws?.orgName ?? "your workspace"}</span>.
             </p>
           </div>
 
-          {/* QUICK ACTION BAR */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <Button
-              size="sm"
-              onClick={() => setQuickLeadModalOpen(true)}
-              className="gap-1.5 shadow-sm font-semibold text-xs"
-            >
-              <UserPlus className="size-4" />
-              <span>+ Quick Lead</span>
-            </Button>
-            <Button asChild size="sm" variant="outline" className="gap-1.5 bg-background/80 backdrop-blur-xs shadow-2xs text-xs font-medium">
-              <Link to="/forms">
-                <ClipboardList className="size-4 text-purple-600 dark:text-purple-400" />
-                <span>Build Form</span>
-              </Link>
-            </Button>
-            <Button asChild size="sm" variant="outline" className="gap-1.5 bg-background/80 backdrop-blur-xs shadow-2xs text-xs font-medium">
-              <Link to="/follow-ups">
-                <CalendarClock className="size-4 text-amber-600 dark:text-amber-400" />
-                <span>Follow-ups</span>
-              </Link>
-            </Button>
-            <Button asChild size="sm" variant="outline" className="gap-1.5 bg-background/80 backdrop-blur-xs shadow-2xs text-xs font-medium">
-              <Link to="/invoices">
-                <FileText className="size-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Invoices</span>
-              </Link>
-            </Button>
+          {/* TIME RANGE FILTER & QUICK ACTIONS */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+            {/* Interactive Time Range Toggle */}
+            <div className="inline-flex items-center p-1 rounded-xl bg-muted/60 border border-border/60 text-xs font-medium self-start sm:self-auto">
+              {(["month", "quarter", "year", "all"] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setTimeRange(r)}
+                  className={cn(
+                    "px-2.5 py-1.5 rounded-lg transition-all cursor-pointer font-semibold capitalize",
+                    timeRange === r
+                      ? "bg-background text-foreground shadow-2xs border border-border/60"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {r === "month"
+                    ? "30 Days"
+                    : r === "quarter"
+                    ? "90 Days"
+                    : r === "year"
+                    ? "1 Year"
+                    : "All Time"}
+                </button>
+              ))}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => setQuickLeadModalOpen(true)}
+                className="gap-1.5 shadow-sm font-semibold text-xs cursor-pointer"
+              >
+                <UserPlus className="size-4" />
+                <span>+ Quick Lead</span>
+              </Button>
+
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="gap-1.5 bg-background/80 backdrop-blur-xs text-xs font-medium cursor-pointer"
+              >
+                <Link to="/follow-ups">
+                  <CalendarClock className="size-4 text-amber-500" />
+                  <span className="hidden xs:inline">Follow-ups</span>
+                </Link>
+              </Button>
+
+              <Button
+                asChild
+                size="sm"
+                variant="outline"
+                className="gap-1.5 bg-background/80 backdrop-blur-xs text-xs font-medium cursor-pointer"
+              >
+                <Link to="/pipeline">
+                  <Briefcase className="size-4 text-primary" />
+                  <span className="hidden xs:inline">Pipeline</span>
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* TOP 4 KEY PERFORMANCE METRIC CARDS */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* TOP 5 EXECUTIVE KPI CARDS */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <KpiCard
           label="Total Open Leads"
           value={stats.data ? String(stats.data.leadCount) : undefined}
-          hint={stats.data ? `${formatMoney(stats.data.leadValue, symbol)} estimated gross` : ""}
+          hint={stats.data ? `${formatMoney(stats.data.leadValue, symbol)} est. value` : ""}
           icon={Users}
           gradient="from-blue-500/10 to-indigo-500/10"
           iconColor="text-blue-600 dark:text-blue-400"
           badge="Active Funnel"
+          to="/leads"
         />
+
+        <KpiCard
+          label="Active Pipeline"
+          value={stats.data ? formatMoney(stats.data.pipelineValue, symbol) : undefined}
+          hint={stats.data ? `${stats.data.openDealCount} open deals` : ""}
+          icon={Briefcase}
+          gradient="from-indigo-500/10 to-purple-500/10"
+          iconColor="text-indigo-600 dark:text-indigo-400"
+          badge="In Progress"
+          to="/pipeline"
+        />
+
         <KpiCard
           label="Weighted Forecast"
           value={stats.data ? formatMoney(stats.data.weighted, symbol) : undefined}
-          hint={stats.data ? `${formatMoney(stats.data.pipelineValue, symbol)} pipeline value` : ""}
+          hint={stats.data ? `${stats.data.winRate}% win rate` : ""}
           icon={TrendingUp}
+          gradient="from-teal-500/10 to-emerald-500/10"
+          iconColor="text-teal-600 dark:text-teal-400"
+          badge="Forecasted"
+          to="/pipeline"
+        />
+
+        <KpiCard
+          label="Closed Won Revenue"
+          value={stats.data ? formatMoney(stats.data.wonValue, symbol) : undefined}
+          hint={stats.data ? `${stats.data.wonCount} won deals` : ""}
+          icon={Award}
           gradient="from-emerald-500/10 to-teal-500/10"
           iconColor="text-emerald-600 dark:text-emerald-400"
-          badge="Pipeline Value"
+          badge="Revenue Won"
+          to="/pipeline"
         />
+
         <KpiCard
-          label="Follow-ups Pending"
+          label="Needs Attention"
           value={stats.data ? String(stats.data.dueFollowUps.length) : undefined}
-          hint={stats.data && stats.data.dueFollowUps.length > 0 ? "Requires action today" : "All clear today"}
+          hint={
+            stats.data && stats.data.dueFollowUps.length > 0
+              ? "Due today or overdue"
+              : "All follow-ups clear"
+          }
           icon={CalendarClock}
-          gradient="from-amber-500/10 to-orange-500/10"
+          gradient="from-amber-500/10 to-rose-500/10"
           iconColor="text-amber-600 dark:text-amber-400"
           tone={stats.data && stats.data.dueFollowUps.length > 0 ? "warning" : "default"}
-          badge="Action Center"
-        />
-        <KpiCard
-          label="Outstanding Receivables"
-          value={stats.data ? formatMoney(stats.data.outstanding, symbol) : undefined}
-          hint={stats.data ? `${stats.data.overdueCount} overdue invoices` : ""}
-          icon={IndianRupee}
-          gradient="from-purple-500/10 to-rose-500/10"
-          iconColor="text-purple-600 dark:text-purple-400"
-          tone={stats.data && stats.data.overdueCount > 0 ? "danger" : "default"}
-          badge="Invoicing"
+          badge="Urgent Tasks"
+          to="/follow-ups"
         />
       </div>
 
       {/* MAIN DASHBOARD ANALYTICS GRID */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* PIPELINE BREAKDOWN & MONTHLY TREND (2 COLS) */}
-        <Card className="shadow-sm border lg:col-span-2">
+        {/* PIPELINE BREAKDOWN & REVENUE VELOCITY CHART (2 COLS) */}
+        <Card className="shadow-xs border rounded-2xl lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <BarChart3 className="size-4 text-primary" />
-                Pipeline & Revenue Performance
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                <BarChart3 className="size-4.5 text-primary" />
+                Pipeline & Revenue Analytics
               </CardTitle>
-              <CardDescription className="text-xs">
-                Real-time stage distribution and 6-month revenue forecasting.
+              <CardDescription className="text-xs text-muted-foreground">
+                Real-time sales stage distribution and 6-month historical velocity.
               </CardDescription>
             </div>
-            <Button asChild variant="ghost" size="sm" className="gap-1 text-xs text-primary">
+            <Button asChild variant="ghost" size="sm" className="gap-1 text-xs text-primary font-semibold">
               <Link to="/pipeline">
-                <span>Open Board</span>
+                <span>Open Kanban</span>
                 <ChevronRight className="size-3.5" />
               </Link>
             </Button>
           </CardHeader>
+
           <CardContent className="space-y-6 pt-2">
             <Tabs defaultValue="stages" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="stages" className="text-xs gap-1.5 font-medium">
+              <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/60 p-1 rounded-xl">
+                <TabsTrigger value="stages" className="text-xs gap-1.5 font-medium rounded-lg">
                   <BarChart3 className="size-3.5" /> Stage Breakdown
                 </TabsTrigger>
-                <TabsTrigger value="trend" className="text-xs gap-1.5 font-medium">
+                <TabsTrigger value="trend" className="text-xs gap-1.5 font-medium rounded-lg">
                   <TrendingUp className="size-3.5" /> Revenue Velocity Trend
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="stages" className="space-y-4">
+              {/* Tab 1: Stage Breakdown */}
+              <TabsContent value="stages" className="space-y-4 focus-visible:outline-none">
                 {!stats.data ? (
-                  <Skeleton className="h-48 w-full" />
+                  <Skeleton className="h-48 w-full rounded-xl" />
                 ) : stats.data.stages.length === 0 ? (
                   <div className="py-12 text-center text-muted-foreground text-sm border border-dashed rounded-xl">
                     <Briefcase className="size-8 text-muted-foreground/40 mx-auto mb-2" />
-                    <p>No open deals currently in the pipeline.</p>
+                    <p className="font-medium text-foreground">No open deals currently in the pipeline.</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Create your first deal or convert qualified leads to populate stages.
+                    </p>
                     <Button asChild size="sm" variant="outline" className="mt-3 text-xs gap-1.5">
                       <Link to="/pipeline">
                         <Plus className="size-3.5" /> Create First Deal
@@ -487,15 +639,33 @@ function DashboardPage() {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border/40" />
-                          <XAxis dataKey="name" tickLine={false} axisLine={false} className="text-[11px] fill-muted-foreground" />
+                          <XAxis
+                            dataKey="name"
+                            tickLine={false}
+                            axisLine={false}
+                            className="text-[11px] fill-muted-foreground font-medium"
+                          />
                           <YAxis
                             tickLine={false}
                             axisLine={false}
-                            className="text-[11px] fill-muted-foreground"
-                            tickFormatter={(v) => `${symbol}${v >= 100000 ? `${(v / 100000).toFixed(1)}L` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                            className="text-[11px] fill-muted-foreground font-mono"
+                            tickFormatter={(v) =>
+                              `${symbol}${
+                                v >= 100000
+                                  ? `${(v / 100000).toFixed(1)}L`
+                                  : v >= 1000
+                                  ? `${(v / 1000).toFixed(0)}k`
+                                  : v
+                              }`
+                            }
                           />
                           <Tooltip content={<CustomTooltip symbol={symbol} />} />
-                          <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} className="fill-primary/80 hover:fill-primary transition-all" />
+                          <Bar
+                            dataKey="value"
+                            fill="#2563eb"
+                            radius={[6, 6, 0, 0]}
+                            className="fill-primary/85 hover:fill-primary transition-all duration-150"
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -525,9 +695,10 @@ function DashboardPage() {
                 )}
               </TabsContent>
 
-              <TabsContent value="trend" className="space-y-4">
+              {/* Tab 2: Revenue Velocity Trend */}
+              <TabsContent value="trend" className="space-y-4 focus-visible:outline-none">
                 {!stats.data ? (
-                  <Skeleton className="h-48 w-full" />
+                  <Skeleton className="h-48 w-full rounded-xl" />
                 ) : (
                   <div className="w-full h-56 pt-2">
                     <ResponsiveContainer width="100%" height="100%">
@@ -543,16 +714,45 @@ function DashboardPage() {
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border/40" />
-                        <XAxis dataKey="month" tickLine={false} axisLine={false} className="text-[11px] fill-muted-foreground" />
+                        <XAxis
+                          dataKey="month"
+                          tickLine={false}
+                          axisLine={false}
+                          className="text-[11px] fill-muted-foreground font-medium"
+                        />
                         <YAxis
                           tickLine={false}
                           axisLine={false}
-                          className="text-[11px] fill-muted-foreground"
-                          tickFormatter={(v) => `${symbol}${v >= 100000 ? `${(v / 100000).toFixed(1)}L` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                          className="text-[11px] fill-muted-foreground font-mono"
+                          tickFormatter={(v) =>
+                            `${symbol}${
+                              v >= 100000
+                                ? `${(v / 100000).toFixed(1)}L`
+                                : v >= 1000
+                                ? `${(v / 1000).toFixed(0)}k`
+                                : v
+                            }`
+                          }
                         />
                         <Tooltip content={<CustomTooltip symbol={symbol} />} />
-                        <Area type="monotone" dataKey="won" name="Won Revenue" stroke="#10b981" fillOpacity={1} fill="url(#colorWon)" />
-                        <Area type="monotone" dataKey="pipeline" name="Pipeline" stroke="#6366f1" fillOpacity={1} fill="url(#colorPipeline)" />
+                        <Area
+                          type="monotone"
+                          dataKey="won"
+                          name="Won Revenue"
+                          stroke="#10b981"
+                          strokeWidth={2}
+                          fillOpacity={1}
+                          fill="url(#colorWon)"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="pipeline"
+                          name="Pipeline Potential"
+                          stroke="#6366f1"
+                          strokeWidth={2}
+                          fillOpacity={1}
+                          fill="url(#colorPipeline)"
+                        />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -560,16 +760,16 @@ function DashboardPage() {
               </TabsContent>
             </Tabs>
 
-            {/* PIPELINE SUMMARY KPI PILLS */}
+            {/* PIPELINE SUMMARY STATS ROW */}
             {stats.data && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t pt-4 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-border/50 pt-4 text-xs">
                 <div className="rounded-xl border bg-card p-3 space-y-1 shadow-2xs">
                   <p className="text-[11px] text-muted-foreground">Open Deals</p>
                   <p className="text-base font-extrabold text-foreground">{stats.data.openDealCount}</p>
                 </div>
                 <div className="rounded-xl border bg-card p-3 space-y-1 shadow-2xs">
                   <p className="text-[11px] text-muted-foreground">Won Value</p>
-                  <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
+                  <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
                     {formatMoney(stats.data.wonValue, symbol)}
                   </p>
                 </div>
@@ -581,7 +781,7 @@ function DashboardPage() {
                 </div>
                 <div className="rounded-xl border bg-card p-3 space-y-1 shadow-2xs">
                   <p className="text-[11px] text-muted-foreground">Avg Deal Size</p>
-                  <p className="text-base font-extrabold text-foreground">
+                  <p className="text-base font-extrabold text-foreground font-mono">
                     {formatMoney(stats.data.avgDealValue, symbol)}
                   </p>
                 </div>
@@ -590,69 +790,104 @@ function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* NEEDS ATTENTION & FOLLOW-UPS (1 COL) */}
-        <Card className="shadow-sm border">
+        {/* NEEDS ATTENTION: URGENT FOLLOW-UPS WITH 1-CLICK RESOLUTION (1 COL) */}
+        <Card className="shadow-xs border rounded-2xl flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <CalendarClock className="size-4 text-amber-500" />
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                <CalendarClock className="size-4.5 text-amber-500" />
                 Needs Attention
               </CardTitle>
-              <CardDescription className="text-xs">Follow-ups due today or overdue</CardDescription>
+              <CardDescription className="text-xs text-muted-foreground">
+                Follow-ups due today or overdue
+              </CardDescription>
             </div>
-            <Button asChild variant="ghost" size="sm" className="text-xs text-primary p-0 h-auto">
+            <Button asChild variant="ghost" size="sm" className="text-xs text-primary font-semibold p-0 h-auto">
               <Link to="/follow-ups">View All</Link>
             </Button>
           </CardHeader>
 
-          <CardContent className="space-y-3 pt-2">
+          <CardContent className="space-y-3 pt-2 flex-1">
             {!stats.data ? (
-              <Skeleton className="h-44 w-full" />
+              <Skeleton className="h-48 w-full rounded-xl" />
             ) : stats.data.dueFollowUps.length === 0 ? (
-              <div className="py-12 text-center text-muted-foreground text-xs space-y-2 border border-dashed rounded-xl">
-                <CheckCircle2 className="size-8 text-emerald-500/60 mx-auto" />
-                <p className="font-semibold text-foreground">All caught up!</p>
-                <p className="text-muted-foreground">No pending follow-ups due today.</p>
+              <div className="py-12 text-center text-muted-foreground text-xs space-y-2 border border-dashed rounded-xl h-full flex flex-col items-center justify-center">
+                <CheckCircle2 className="size-8 text-emerald-500/70 mx-auto" />
+                <p className="font-semibold text-foreground text-sm">All caught up!</p>
+                <p className="text-muted-foreground max-w-[200px]">
+                  No pending follow-ups due today. You are fully up to date.
+                </p>
+                <Button asChild size="sm" variant="outline" className="mt-2 text-xs gap-1.5">
+                  <Link to="/follow-ups">
+                    <Plus className="size-3.5" /> Schedule Follow-up
+                  </Link>
+                </Button>
               </div>
             ) : (
               stats.data.dueFollowUps.map((f) => {
-                const lead = f.leads as unknown as { first_name: string; last_name: string | null } | null;
+                const lead = f.leads as unknown as {
+                  id: string;
+                  first_name: string;
+                  last_name: string | null;
+                  company: string | null;
+                  phone: string | null;
+                  email: string | null;
+                } | null;
                 const overdue = new Date(f.due_at).getTime() < Date.now();
 
                 return (
                   <div
                     key={f.id}
-                    className="rounded-xl border bg-card p-3.5 space-y-2 transition-transform hover:translate-x-0.5 shadow-2xs"
+                    className="rounded-xl border bg-card p-3.5 space-y-2.5 transition-all hover:border-primary/40 shadow-2xs group"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {f.type === "call" ? (
-                          <PhoneCall className="size-3.5 text-blue-500 shrink-0" />
-                        ) : f.type === "meeting" || f.type === "demo" ? (
-                          <Video className="size-3.5 text-purple-500 shrink-0" />
-                        ) : (
-                          <Mail className="size-3.5 text-emerald-500 shrink-0" />
-                        )}
-                        <p className="text-xs font-semibold text-foreground line-clamp-1">
-                          {f.subject ?? f.type}
-                        </p>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-muted text-foreground shrink-0">
+                          {f.type === "call" ? (
+                            <PhoneCall className="size-3.5 text-blue-500" />
+                          ) : f.type === "meeting" || f.type === "demo" ? (
+                            <Video className="size-3.5 text-purple-500" />
+                          ) : (
+                            <Mail className="size-3.5 text-emerald-500" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-foreground truncate">
+                            {f.subject ?? f.type}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {lead ? `${lead.first_name} ${lead.last_name ?? ""}`.trim() : "General Prospect"}
+                            {lead?.company && ` · ${lead.company}`}
+                          </p>
+                        </div>
                       </div>
+
                       <Badge
                         variant={overdue ? "destructive" : "secondary"}
-                        className="text-[10px] shrink-0 font-semibold px-2"
+                        className="text-[10px] shrink-0 font-semibold px-2 py-0.5"
                       >
                         {relativeDay(f.due_at)}
                       </Badge>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/50">
-                      <span className="font-medium text-foreground">
-                        {lead ? `${lead.first_name} ${lead.last_name ?? ""}`.trim() : "General Lead"}
-                      </span>
-                      <span className="flex items-center gap-1 font-mono">
-                        <Clock className="size-3" />
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1.5 border-t border-border/50">
+                      <span className="flex items-center gap-1 font-mono text-[10px]">
+                        <Clock className="size-3 text-muted-foreground/70" />
                         {formatDateTime(f.due_at)}
                       </span>
+
+                      {/* 1-Click Complete Button */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => completeFollowUpMutation.mutate(f.id)}
+                        disabled={completeFollowUpMutation.isPending}
+                        className="h-6 px-2 text-[10px] font-semibold text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 cursor-pointer gap-1 transition-colors"
+                        title="Mark complete"
+                      >
+                        <Check className="size-3 text-emerald-500" />
+                        <span>Complete</span>
+                      </Button>
                     </div>
                   </div>
                 );
@@ -664,40 +899,43 @@ function DashboardPage() {
 
       {/* LEAD SOURCE & TEAM LEADERBOARD GRID */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* TOP LEAD SOURCES CHANNEL BREAKDOWN */}
-        <Card className="shadow-sm border">
+        {/* TOP LEAD SOURCES BREAKDOWN */}
+        <Card className="shadow-xs border rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <PieChart className="size-4 text-indigo-500" />
-                Top Lead Sources & Channels
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                <PieChart className="size-4.5 text-indigo-500" />
+                Inbound Lead Source Channels
               </CardTitle>
-              <CardDescription className="text-xs">
-                Inbound lead volume breakdown by channel.
+              <CardDescription className="text-xs text-muted-foreground">
+                Volume attribution across acquisition channels.
               </CardDescription>
             </div>
-            <Button asChild variant="ghost" size="sm" className="text-xs text-primary p-0 h-auto">
+            <Button asChild variant="ghost" size="sm" className="text-xs text-primary font-semibold p-0 h-auto">
               <Link to="/leads">View Leads</Link>
             </Button>
           </CardHeader>
+
           <CardContent className="space-y-3 pt-2">
             {!stats.data ? (
-              <Skeleton className="h-36 w-full" />
+              <Skeleton className="h-36 w-full rounded-xl" />
             ) : stats.data.sources.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-6 text-center">No lead source metrics available.</p>
+              <p className="text-xs text-muted-foreground py-6 text-center">No lead source metrics recorded yet.</p>
             ) : (
               stats.data.sources.map((src) => {
                 const totalL = stats.data?.leadCount || 1;
                 const pct = Math.round((src.count / totalL) * 100);
                 return (
-                  <div key={src.name} className="space-y-1">
+                  <div key={src.name} className="space-y-1.5 p-2 rounded-xl hover:bg-muted/30 transition-colors">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-foreground">{src.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground">{src.name}</span>
+                      </div>
                       <span className="font-bold text-foreground font-mono">
                         {src.count} leads ({pct}%)
                       </span>
                     </div>
-                    <Progress value={pct} className="h-1.5 bg-muted/60" />
+                    <Progress value={pct} className="h-2 bg-muted/60" />
                   </div>
                 );
               })
@@ -705,47 +943,62 @@ function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* TEAM SALES LEADERBOARD */}
-        <Card className="shadow-sm border">
+        {/* TEAM SALES REP LEADERBOARD */}
+        <Card className="shadow-xs border rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Award className="size-4 text-amber-500" />
-                Team Sales Rep Leaderboard
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                <Award className="size-4.5 text-amber-500" />
+                Sales Rep Leaderboard
               </CardTitle>
-              <CardDescription className="text-xs">
-                Won revenue and lead assignment breakdown.
+              <CardDescription className="text-xs text-muted-foreground">
+                Closed won revenue and active pipeline assignments.
               </CardDescription>
             </div>
-            <Button asChild variant="ghost" size="sm" className="text-xs text-primary p-0 h-auto">
-              <Link to="/team">Team Members</Link>
+            <Button asChild variant="ghost" size="sm" className="text-xs text-primary font-semibold p-0 h-auto">
+              <Link to="/team">Manage Team</Link>
             </Button>
           </CardHeader>
-          <CardContent className="space-y-3 pt-2">
+
+          <CardContent className="space-y-2.5 pt-2">
             {!stats.data ? (
-              <Skeleton className="h-36 w-full" />
+              <Skeleton className="h-36 w-full rounded-xl" />
             ) : stats.data.teamLeaderboard.length === 0 ? (
               <p className="text-xs text-muted-foreground py-6 text-center">No team performance metrics recorded.</p>
             ) : (
               stats.data.teamLeaderboard.slice(0, 4).map((member, idx) => (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-2.5 rounded-xl border bg-card text-xs shadow-2xs"
+                  className="flex items-center justify-between p-3 rounded-xl border bg-card text-xs shadow-2xs hover:border-primary/30 transition-colors"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="size-7 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-xs">
-                      {idx + 1}
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        "size-7 rounded-full font-bold flex items-center justify-center text-xs shrink-0",
+                        idx === 0
+                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                          : idx === 1
+                          ? "bg-slate-300/40 text-slate-700 dark:text-slate-300 border border-slate-400/30"
+                          : idx === 2
+                          ? "bg-amber-700/15 text-amber-800 dark:text-amber-300 border border-amber-700/30"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : idx + 1}
                     </div>
                     <div>
                       <p className="font-bold text-foreground">{member.name}</p>
-                      <p className="text-[10px] text-muted-foreground capitalize">{member.role.replace("_", " ")}</p>
+                      <p className="text-[10px] text-muted-foreground capitalize">
+                        {member.role.replace("_", " ")}
+                      </p>
                     </div>
                   </div>
+
                   <div className="text-right space-y-0.5">
-                    <p className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                    <p className="font-bold text-emerald-600 dark:text-emerald-400 font-mono text-sm">
                       {formatMoney(member.wonValue, symbol)}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-[10px] text-muted-foreground font-medium">
                       {member.wonCount} won · {member.leadCount} assigned
                     </p>
                   </div>
@@ -756,21 +1009,21 @@ function DashboardPage() {
         </Card>
       </div>
 
-      {/* BOTTOM GRID: FORM INTAKE SUMMARY & WORKSPACE ACTIVITIES */}
+      {/* BOTTOM GRID: FORM INTAKE SUMMARY & WORKSPACE ACTIVITY STREAM */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* DYNAMIC FORM INTAKE WIDGET */}
-        <Card className="shadow-sm border">
+        <Card className="shadow-xs border rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <ClipboardList className="size-4 text-purple-600 dark:text-purple-400" />
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                <ClipboardList className="size-4.5 text-purple-600 dark:text-purple-400" />
                 Form Lead Intake Summary
               </CardTitle>
-              <CardDescription className="text-xs">
-                Performance metrics for dynamic lead generation forms.
+              <CardDescription className="text-xs text-muted-foreground">
+                Live performance metrics for shareable lead generation forms.
               </CardDescription>
             </div>
-            <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs font-medium h-8">
+            <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs font-semibold h-8 cursor-pointer">
               <Link to="/forms">
                 <Plus className="size-3.5" />
                 <span>Build Form</span>
@@ -780,7 +1033,7 @@ function DashboardPage() {
 
           <CardContent className="space-y-4 pt-2">
             {!stats.data ? (
-              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-32 w-full rounded-xl" />
             ) : (
               <>
                 <div className="grid grid-cols-3 gap-3">
@@ -806,13 +1059,13 @@ function DashboardPage() {
                   <div className="space-y-1">
                     <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <Sparkles className="size-3.5 text-amber-500" />
-                      Readymade Form Templates
+                      Readymade Lead Templates
                     </p>
                     <p className="text-[11px] text-muted-foreground">
-                      Deploy 12 pre-built templates for Feedback, Sales Quotes, NPS, and Demos in 1 click.
+                      Deploy pre-built templates for Feedback, Sales Quotes, NPS, and Demos in 1 click.
                     </p>
                   </div>
-                  <Button asChild size="sm" variant="secondary" className="shrink-0 text-xs gap-1 font-semibold">
+                  <Button asChild size="sm" variant="secondary" className="shrink-0 text-xs gap-1 font-semibold cursor-pointer">
                     <Link to="/forms">
                       <span>Explore</span>
                       <ArrowRight className="size-3.5" />
@@ -824,23 +1077,23 @@ function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* WORKSPACE ACTIVITY FEED */}
-        <Card className="shadow-sm border">
+        {/* WORKSPACE ACTIVITY STREAM */}
+        <Card className="shadow-xs border rounded-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-0.5">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Zap className="size-4 text-emerald-500" />
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                <Zap className="size-4.5 text-emerald-500" />
                 Live Activity Timeline
               </CardTitle>
-              <CardDescription className="text-xs">
-                Real-time stream of team actions, lead changes, and deals.
+              <CardDescription className="text-xs text-muted-foreground">
+                Real-time stream of team events, stage changes, and deal updates.
               </CardDescription>
             </div>
           </CardHeader>
 
           <CardContent className="pt-2">
             {!timeline.data ? (
-              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-40 w-full rounded-xl" />
             ) : timeline.data.length === 0 ? (
               <p className="py-8 text-center text-xs text-muted-foreground">No recent activities logged.</p>
             ) : (
@@ -848,9 +1101,9 @@ function DashboardPage() {
                 {timeline.data.map((a) => (
                   <li key={a.id} className="ml-4 space-y-1">
                     <span className="absolute -left-1.5 mt-1.5 size-3 rounded-full border-2 border-background bg-primary" />
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-foreground">{a.title}</p>
-                      <span className="text-[10px] text-muted-foreground font-mono">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-foreground line-clamp-1">{a.title}</p>
+                      <span className="text-[10px] text-muted-foreground font-mono shrink-0">
                         {formatDateTime(a.occurred_at)}
                       </span>
                     </div>
@@ -870,14 +1123,14 @@ function DashboardPage() {
 
       {/* QUICK LEAD CREATION MODAL DIALOG */}
       <Dialog open={quickLeadModalOpen} onOpenChange={setQuickLeadModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md sm:rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="size-4 text-primary" />
-              Quick Create New Lead
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <UserPlus className="size-4.5 text-primary" />
+              Quick Capture New Lead
             </DialogTitle>
-            <DialogDescription className="text-xs">
-              Instantly capture a lead directly from your sales dashboard.
+            <DialogDescription className="text-xs text-muted-foreground">
+              Instantly create a prospect directly into your active CRM pipeline.
             </DialogDescription>
           </DialogHeader>
 
@@ -907,6 +1160,7 @@ function DashboardPage() {
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Email Address</Label>
                 <Input
+                  type="email"
                   placeholder="rahul@company.com"
                   value={leadEmail}
                   onChange={(e) => setLeadEmail(e.target.value)}
@@ -935,27 +1189,67 @@ function DashboardPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">Estimated Value ({symbol})</Label>
+                <Label className="text-xs font-semibold">Est. Deal Value ({symbol})</Label>
                 <Input
                   placeholder="500000"
                   value={leadEstimatedValue}
                   onChange={(e) => setLeadEstimatedValue(e.target.value)}
-                  className="h-9 text-xs"
+                  className="h-9 text-xs font-mono"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Lead Source</Label>
+                <Select value={leadSourceId} onValueChange={setLeadSourceId}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Select Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(sourcesQuery.data ?? []).map((s) => (
+                      <SelectItem key={s.id} value={s.id} className="text-xs">
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Assign Sales Rep</Label>
+                <Select value={leadAssignedMemberId} onValueChange={setLeadAssignedMemberId}>
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Select Rep" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(membersQuery.data ?? []).map((m) => (
+                      <SelectItem key={m.id} value={m.id} className="text-xs">
+                        {m.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
 
           <DialogFooter className="mt-2">
-            <Button variant="outline" onClick={() => setQuickLeadModalOpen(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setQuickLeadModalOpen(false)}
+              className="text-xs"
+            >
               Cancel
             </Button>
             <Button
+              size="sm"
               onClick={() => createQuickLeadMutation.mutate()}
-              disabled={createQuickLeadMutation.isPending}
-              className="gap-1.5"
+              disabled={createQuickLeadMutation.isPending || !leadFirstName.trim()}
+              className="gap-1.5 text-xs font-semibold"
             >
-              {createQuickLeadMutation.isPending && <Sparkles className="size-4 animate-spin" />}
+              {createQuickLeadMutation.isPending && <Sparkles className="size-3.5 animate-spin" />}
               <span>Create Lead</span>
             </Button>
           </DialogFooter>
@@ -974,6 +1268,7 @@ function KpiCard({
   iconColor,
   tone = "default",
   badge,
+  to,
 }: {
   label: string;
   value: string | undefined;
@@ -983,34 +1278,48 @@ function KpiCard({
   iconColor: string;
   tone?: "default" | "warning" | "danger";
   badge?: string;
+  to?: string;
 }) {
-  return (
-    <Card className="shadow-sm border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+  const content = (
+    <Card
+      className={cn(
+        "shadow-xs border rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer",
+        tone === "warning" && "border-amber-500/30",
+        tone === "danger" && "border-rose-500/30"
+      )}
+    >
       <CardContent className="p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider truncate">
             {label}
           </span>
-          <div className={`p-2 rounded-xl bg-gradient-to-br ${gradient} border shadow-2xs`}>
-            <Icon className={`size-4.5 ${iconColor}`} />
+          <div className={`p-2 rounded-xl bg-gradient-to-br ${gradient} border border-border/40 shadow-2xs shrink-0`}>
+            <Icon className={`size-4 ${iconColor}`} />
           </div>
         </div>
 
         <div>
           {value === undefined ? (
-            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-8 w-24 rounded-lg" />
           ) : (
-            <p className="text-2xl font-black tracking-tight text-foreground">{value}</p>
+            <p className="text-2xl font-black tracking-tight text-foreground font-mono">{value}</p>
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px]">
-          <span className="text-muted-foreground flex items-center gap-1 font-medium">
+        <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px] gap-2">
+          <span className="text-muted-foreground flex items-center gap-1 font-medium truncate">
             <ArrowUpRight className="size-3 text-emerald-500 shrink-0" />
-            {hint}
+            <span className="truncate">{hint}</span>
           </span>
           {badge && (
-            <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 bg-background/50">
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[9.5px] font-semibold px-1.5 py-0 bg-background/50 shrink-0",
+                tone === "warning" && "text-amber-600 dark:text-amber-400 border-amber-500/30",
+                tone === "danger" && "text-rose-600 dark:text-rose-400 border-rose-500/30"
+              )}
+            >
               {badge}
             </Badge>
           )}
@@ -1018,17 +1327,28 @@ function KpiCard({
       </CardContent>
     </Card>
   );
+
+  if (to) {
+    return <Link to={to}>{content}</Link>;
+  }
+
+  return content;
 }
 
 function CustomTooltip({ active, payload, label, symbol }: any) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="rounded-xl border bg-popover p-3 text-popover-foreground shadow-md text-xs space-y-1">
+      <div className="rounded-xl border bg-popover/95 backdrop-blur-xs p-3 text-popover-foreground shadow-lg text-xs space-y-1 border-border/70">
         <p className="font-bold text-foreground">{label}</p>
-        <p className="text-primary font-semibold">
+        <p className="text-primary font-semibold font-mono">
           Value: {formatMoney(data.value || data.won || 0, symbol)}
         </p>
+        {data.pipeline !== undefined && (
+          <p className="text-indigo-500 font-semibold font-mono">
+            Pipeline: {formatMoney(data.pipeline, symbol)}
+          </p>
+        )}
         {data.count !== undefined && (
           <p className="text-muted-foreground text-[11px]">
             Open Deals: {data.count}

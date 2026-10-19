@@ -58,11 +58,11 @@ export const Route = createFileRoute("/_authenticated/clients")({
       },
       { property: "og:title", content: "Client Directory & Customer Accounts — LeadKart CRM" },
       { property: "og:description", content: "Manage your client database and contact relationships." },
-      { property: "og:url", content: "https://leadkart.lovable.app/clients" },
+      { property: "og:url", content: "https://leadkartpro.vercel.app/clients" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Client Accounts — LeadKart CRM" },
     ],
-    links: [{ rel: "canonical", href: "https://leadkart.lovable.app/clients" }],
+    links: [{ rel: "canonical", href: "https://leadkartpro.vercel.app/clients" }],
   }),
   component: ClientsPage,
 });
